@@ -41,6 +41,26 @@ const ProductoController = {
     }
   },
 
+  // GET /productos/sin-stock
+  getSinStock: async (req, res, next) => {
+    try {
+      const productos = await ProductoModel.getSinStock();
+      res.json({ success: true, data: productos });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // GET /productos/bajo-stock
+  getBajoStock: async (req, res, next) => {
+    try {
+      const productos = await ProductoModel.getBajoStock();
+      res.json({ success: true, data: productos });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   // POST /productos
   create: async (req, res, next) => {
     try {
@@ -91,6 +111,31 @@ const ProductoController = {
         precio_compra,
         stock_minimo,
       });
+
+      if (!producto) {
+        return res.status(404).json({ success: false, error: "Producto no encontrado." });
+      }
+
+      res.json({ success: true, data: producto });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // PATCH /productos/:id/stock
+  updateStock: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { stock_actual } = req.body;
+
+      if (stock_actual === undefined || stock_actual === null) {
+        return res.status(400).json({ success: false, error: "stock_actual es requerido." });
+      }
+      if (stock_actual < 0) {
+        return res.status(400).json({ success: false, error: "El stock no puede ser negativo." });
+      }
+
+      const producto = await ProductoModel.updateStockManual(id, stock_actual);
 
       if (!producto) {
         return res.status(404).json({ success: false, error: "Producto no encontrado." });
