@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { TrendingUp, ShoppingCart, Package, AlertTriangle } from 'lucide-react';
 import { useDatos } from '../hooks/useDatos.js';
-import { ventasApi, comprasApi, productosApi } from '../services/api.js';
+import { ventasApi, comprasApi, productosApi, gastosApi } from '../services/api.js';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
@@ -10,18 +10,22 @@ export default function Dashboard() {
   const { datos: compras, cargando: cargandoCompras } = useDatos(comprasApi.listar);
   const { datos: productos, cargando: cargandoProductos } = useDatos(productosApi.listar);
   const { datos: bajoStock } = useDatos(productosApi.bajoStock);
+  const { datos: gastos } = useDatos(gastosApi.listar);
 
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];
   const listaProductos = Array.isArray(productos) ? productos : [];
   const listaBajoStock = Array.isArray(bajoStock) ? bajoStock : [];
+  const listaGastos = Array.isArray(gastos) ? gastos : [];
 
   const stats = useMemo(() => {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
     const totalGanancia = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0);
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0), 0);
-    return { totalVentas, totalGanancia, totalCompras };
-  }, [listaVentas, listaCompras]);
+    const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
+    const gananciaNeta = totalGanancia - totalGastos;
+    return { totalVentas, totalGanancia, totalCompras, totalGastos, gananciaNeta };
+  }, [listaVentas, listaCompras, listaGastos]);
 
   if (cargandoVentas || cargandoCompras || cargandoProductos) return <Spinner />;
 
@@ -32,11 +36,12 @@ export default function Dashboard() {
         <p className="text-sm text-slate-500 mt-0.5">Resumen general del negocio</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard titulo="Total ventas" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="verde" />
-        <StatCard titulo="Ganancia" valor={formatearPrecio(stats.totalGanancia)} icono="💰" color="azul" />
-        <StatCard titulo="Compras" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="amarillo" />
-        <StatCard titulo="Productos" valor={listaProductos.length} icono={<Package size={18} />} color="azul" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard titulo="Total vendido" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="verde" />
+        <StatCard titulo="Total comprado" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="amarillo" />
+        <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono="💸" color="rojo" />
+        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.totalGanancia)} icono="💰" color="azul" />
+        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono="📊" color={stats.gananciaNeta >= 0 ? 'verde' : 'rojo'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

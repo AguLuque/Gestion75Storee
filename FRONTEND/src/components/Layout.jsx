@@ -32,7 +32,7 @@ export default function Layout() {
           <button onClick={() => setMenuAbierto(true)} className="text-slate-600">
             <Menu size={20} />
           </button>
-          <span className="font-semibold text-slate-800">75Store</span>
+          <span className="font-semibold text-slate-800">75Storee</span>
         </div>
 
         <div className="p-4 lg:p-6">

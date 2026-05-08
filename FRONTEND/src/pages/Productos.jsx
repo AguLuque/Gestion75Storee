@@ -107,7 +107,7 @@ export default function Productos() {
       {/* Tabla */}
       <Card className="p-5">
         <Tabla
-          columnas={['Producto', 'Categoría', 'Stock', 'Precio min.', 'Precio may.', 'Acciones']}
+          columnas={['Producto', 'Categoría', 'Stock', 'P. Compra', 'P. Minorista', 'P. Mayorista', 'Acciones']}
           datos={productosFiltrados}
           vacio="No se encontraron productos"
           renderFila={(p) => (
@@ -121,6 +121,7 @@ export default function Productos() {
                   {p.stock_actual} u.
                 </Badge>
               </td>
+              <td className="py-3 pr-4 text-slate-500 text-xs">{formatearPrecio(p.precio_compra)}</td>
               <td className="py-3 pr-4 text-slate-700">{formatearPrecio(p.precio_minorista)}</td>
               <td className="py-3 pr-4 text-slate-700">{formatearPrecio(p.precio_mayorista)}</td>
               <td className="py-3 flex items-center gap-1.5">

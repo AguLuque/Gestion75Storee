@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, Package, ShoppingCart, TrendingUp, 
+import {
+  LayoutDashboard, Package, ShoppingCart, TrendingUp,
   Tag, Truck, DollarSign, X
 } from 'lucide-react';
 import { cn } from '../utils.js';
 
 const items = [
-  { a: '/', icono: LayoutDashboard, etiqueta: 'Dashboard' },
+  { a: '/', icono: LayoutDashboard, etiqueta: 'Principal' },
   { a: '/productos', icono: Package, etiqueta: 'Productos' },
   { a: '/ventas', icono: TrendingUp, etiqueta: 'Ventas' },
   { a: '/compras', icono: ShoppingCart, etiqueta: 'Compras' },
@@ -21,7 +21,7 @@ export default function Sidebar({ cerrar, cerrarMenu }) {
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
         <div>
-          <span className="font-bold text-slate-800 text-lg">75Store</span>
+          <link rel="icon" type="image/png" href="/Logo.png" />
           <p className="text-xs text-slate-400 mt-0.5">Gestión</p>
         </div>
         {cerrar && (
