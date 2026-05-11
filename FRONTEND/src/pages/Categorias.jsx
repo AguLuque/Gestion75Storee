@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { useDatos, useAccion } from '../hooks/useDatos.js';
+import { useAccion } from '../hooks/useDatos.js';
 import { categoriasApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { Boton, Card, Modal, Input, Spinner, Tabla, ModalConfirmar } from '../components/ui/index.jsx';
 
 export default function Categorias() {
-  const { datos: categorias, cargando, recargar } = useDatos(categoriasApi.listar);
+  const { categorias, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -37,7 +38,7 @@ export default function Categorias() {
     if (resultado.ok) {
       mostrarToast(editando ? 'Categoría actualizada' : 'Categoría creada');
       setModalAbierto(false);
-      recargar();
+      recargar('categorias');
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -48,7 +49,7 @@ export default function Categorias() {
     if (resultado.ok) {
       mostrarToast('Categoría eliminada');
       setConfirmEliminar(null);
-      recargar();
+      recargar('categorias');
     } else {
       mostrarToast(resultado.error, 'error');
     }

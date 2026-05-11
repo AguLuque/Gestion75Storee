@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Plus, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
-import { useDatos, useAccion } from '../hooks/useDatos.js';
+import { useAccion } from '../hooks/useDatos.js';
 import { comprasApi, productosApi, proveedoresApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { Boton, Card, Modal, Spinner } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioCompra from '../components/FormularioCompra.jsx';
 
 export default function Compras() {
-  const { datos: compras, cargando, recargar } = useDatos(comprasApi.listar);
-  const { datos: productos, recargar: recargarProductos } = useDatos(productosApi.listar);
-  const { datos: proveedores } = useDatos(proveedoresApi.listar);
+  const { compras, productos, proveedores, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -37,8 +36,8 @@ export default function Compras() {
     if (resultado.ok) {
       mostrarToast(compraEditando ? 'Compra actualizada' : 'Compra registrada');
       setModalAbierto(false);
-      recargar();
-      recargarProductos();
+      recargar('compras');
+      recargar('productos');
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -121,7 +120,7 @@ export default function Compras() {
           onGuardar={guardar}
           guardando={guardando}
           onCancelar={() => setModalAbierto(false)}
-          onProductoCreado={recargarProductos}
+          onProductoCreado={'productos'}
         />
       </Modal>
     </div>

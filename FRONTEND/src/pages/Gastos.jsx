@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { useDatos, useAccion } from '../hooks/useDatos.js';
+import { useAccion } from '../hooks/useDatos.js';
 import { gastosApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { useDatosGlobal } from '../context/DatosContext.jsx';
 import {
   Boton, Card, Modal, Input, Select, Textarea,
   Spinner, Tabla, ModalConfirmar, Badge
@@ -14,7 +15,7 @@ const CATEGORIAS_GASTO = ['Servicios', 'Alquiler', 'Transporte', 'Marketing', 'P
 const formularioVacio = { descripcion: '', monto: '', categoria: '' };
 
 export default function Gastos() {
-  const { datos: gastos, cargando, recargar } = useDatos(gastosApi.listar);
+  const { gastos, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -50,7 +51,7 @@ export default function Gastos() {
     if (resultado.ok) {
       mostrarToast(gastoEditando ? 'Gasto actualizado' : 'Gasto registrado');
       setModalAbierto(false);
-      recargar();
+      recargar('gastos');
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -61,7 +62,7 @@ export default function Gastos() {
     if (resultado.ok) {
       mostrarToast('Gasto eliminado');
       setConfirmEliminar(null);
-      recargar();
+      recargar('gastos');
     } else {
       mostrarToast(resultado.error, 'error');
     }

@@ -1,47 +1,41 @@
 import { useMemo } from 'react';
-import { TrendingUp, ShoppingCart, Package, AlertTriangle } from 'lucide-react';
-import { useDatos } from '../hooks/useDatos.js';
-import { ventasApi, comprasApi, productosApi, gastosApi } from '../services/api.js';
+import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3 } from 'lucide-react';
+import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 export default function Dashboard() {
-  const { datos: ventas, cargando: cargandoVentas } = useDatos(ventasApi.listar);
-  const { datos: compras, cargando: cargandoCompras } = useDatos(comprasApi.listar);
-  const { datos: productos, cargando: cargandoProductos } = useDatos(productosApi.listar);
-  const { datos: bajoStock } = useDatos(productosApi.bajoStock);
-  const { datos: gastos } = useDatos(gastosApi.listar);
+  const { ventas, compras, gastos, bajoStock, cargando } = useDatosGlobal();
 
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];
-  const listaProductos = Array.isArray(productos) ? productos : [];
-  const listaBajoStock = Array.isArray(bajoStock) ? bajoStock : [];
   const listaGastos = Array.isArray(gastos) ? gastos : [];
+  const listaBajoStock = Array.isArray(bajoStock) ? bajoStock : [];
 
   const stats = useMemo(() => {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
-    const totalGanancia = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0);
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0), 0);
     const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
-    const gananciaNeta = totalGanancia - totalGastos;
-    return { totalVentas, totalGanancia, totalCompras, totalGastos, gananciaNeta };
+    const gananciaBruta = totalVentas - totalCompras;
+    const gananciaNeta = gananciaBruta - totalGastos;
+    return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta };
   }, [listaVentas, listaCompras, listaGastos]);
 
-  if (cargandoVentas || cargandoCompras || cargandoProductos) return <Spinner />;
+  if (cargando) return <Spinner />;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
+        <h1 className="text-xl font-bold text-slate-800">Principal  </h1>
         <p className="text-sm text-slate-500 mt-0.5">Resumen general del negocio</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard titulo="Total vendido" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="verde" />
         <StatCard titulo="Total comprado" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="amarillo" />
-        <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono="💸" color="rojo" />
-        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.totalGanancia)} icono="💰" color="azul" />
-        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono="📊" color={stats.gananciaNeta >= 0 ? 'verde' : 'rojo'} />
+        <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono={<Wallet size={18} />} color="rojo" />
+        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.gananciaBruta)} icono={<DollarSign size={18} />} color={stats.gananciaBruta >= 0 ? 'azul' : 'rojo'} />
+        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono={<BarChart3 size={18} />} color={stats.gananciaNeta >= 0 ? 'verde' : 'rojo'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

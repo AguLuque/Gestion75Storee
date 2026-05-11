@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { useDatos, useAccion } from '../hooks/useDatos.js';
+import { useAccion } from '../hooks/useDatos.js';
 import { proveedoresApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { Boton, Card, Modal, Input, Textarea, Spinner, Tabla, ModalConfirmar } from '../components/ui/index.jsx';
 
 const formularioVacio = { nombre: '', contacto: '', observaciones: '' };
 
 export default function Proveedores() {
-  const { datos: proveedores, cargando, recargar } = useDatos(proveedoresApi.listar);
+  const { proveedores, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -43,7 +44,7 @@ export default function Proveedores() {
     if (resultado.ok) {
       mostrarToast(editando ? 'Proveedor actualizado' : 'Proveedor creado');
       setModalAbierto(false);
-      recargar();
+      recargar('proveedores');
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -54,7 +55,7 @@ export default function Proveedores() {
     if (resultado.ok) {
       mostrarToast('Proveedor eliminado');
       setConfirmEliminar(null);
-      recargar();
+      recargar('proveedores');
     } else {
       mostrarToast(resultado.error, 'error');
     }

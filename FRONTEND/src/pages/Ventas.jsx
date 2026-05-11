@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
-import { useDatos, useAccion } from '../hooks/useDatos.js';
+import { useAccion } from '../hooks/useDatos.js';
 import { ventasApi, productosApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { Boton, Card, Modal, Badge, Spinner, Tabla } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioVenta from '../components/FormularioVenta.jsx';
 
 export default function Ventas() {
-  const { datos: ventas, cargando, recargar } = useDatos(ventasApi.listar);
-  const { datos: productos } = useDatos(productosApi.listar);
+  const { ventas, productos, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -21,7 +21,8 @@ export default function Ventas() {
     if (resultado.ok) {
       mostrarToast('Venta registrada');
       setModalAbierto(false);
-      recargar();
+      recargar('ventas');
+      recargar('productos');
     } else {
       mostrarToast(resultado.error, 'error');
     }

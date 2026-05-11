@@ -20,9 +20,8 @@ export default function Sidebar({ cerrar, cerrarMenu }) {
     <aside className="w-56 bg-white border-r border-slate-200 h-full flex flex-col">
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
-        <div>
-          <link rel="icon" type="image/png" href="/Logo.png" />
-          <p className="text-xs text-slate-400 mt-0.5">Gestión</p>
+        <div className="flex items-center gap-2">
+          <img src="/Logo.png" alt="Logo" className="h-40 w-auto" />
         </div>
         {cerrar && (
           <button onClick={cerrar} className="text-slate-400 hover:text-slate-600 lg:hidden">
