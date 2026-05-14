@@ -1,7 +1,33 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedoresApi } from '../services/api.js';
 
 const DatosContext = createContext(null);
+
+function aplicarFiltro(lista, periodo, campo = 'fecha') {
+  if (periodo === 'todo') return lista;
+  const ahora = new Date();
+  return lista.filter(item => {
+    const fecha = new Date(item[campo]);
+    switch (periodo) {
+      case 'dia': {
+        const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        return fecha >= hoy;
+      }
+      case 'semana': {
+        const inicio = new Date(ahora);
+        inicio.setDate(ahora.getDate() - 7);
+        return fecha >= inicio;
+      }
+      case 'mes':
+        return fecha.getMonth() === ahora.getMonth() &&
+          fecha.getFullYear() === ahora.getFullYear();
+      case 'año':
+        return fecha.getFullYear() === ahora.getFullYear();
+      default:
+        return true;
+    }
+  });
+}
 
 export function DatosProvider({ children }) {
   const [datos, setDatos] = useState({
@@ -9,6 +35,7 @@ export function DatosProvider({ children }) {
     categorias: [], proveedores: [], bajoStock: [],
   });
   const [cargando, setCargando] = useState(true);
+  const [periodo, setPeriodo] = useState('mes');
 
   const cargarTodo = useCallback(async () => {
     setCargando(true);
@@ -25,29 +52,28 @@ export function DatosProvider({ children }) {
     const [ventas, compras, productos, gastos, categorias, proveedores, bajoStock] = resultados;
 
     setDatos({
-      ventas:      ventas.status      === 'fulfilled' ? ventas.value      : [],
-      compras:     compras.status     === 'fulfilled' ? compras.value     : [],
-      productos:   productos.status   === 'fulfilled' ? productos.value   : [],
-      gastos:      gastos.status      === 'fulfilled' ? gastos.value      : [],
-      categorias:  categorias.status  === 'fulfilled' ? categorias.value  : [],
+      ventas: ventas.status === 'fulfilled' ? ventas.value : [],
+      compras: compras.status === 'fulfilled' ? compras.value : [],
+      productos: productos.status === 'fulfilled' ? productos.value : [],
+      gastos: gastos.status === 'fulfilled' ? gastos.value : [],
+      categorias: categorias.status === 'fulfilled' ? categorias.value : [],
       proveedores: proveedores.status === 'fulfilled' ? proveedores.value : [],
-      bajoStock:   bajoStock.status   === 'fulfilled' ? bajoStock.value   : [],
+      bajoStock: bajoStock.status === 'fulfilled' ? bajoStock.value : [],
     });
     setCargando(false);
   }, []);
 
   useEffect(() => { cargarTodo(); }, [cargarTodo]);
 
-  // Recargar solo una sección específica
   const recargar = useCallback(async (seccion) => {
     const apis = {
-      ventas:      ventasApi.listar,
-      compras:     comprasApi.listar,
-      productos:   productosApi.listar,
-      gastos:      gastosApi.listar,
-      categorias:  categoriasApi.listar,
+      ventas: ventasApi.listar,
+      compras: comprasApi.listar,
+      productos: productosApi.listar,
+      gastos: gastosApi.listar,
+      categorias: categoriasApi.listar,
       proveedores: proveedoresApi.listar,
-      bajoStock:   productosApi.bajoStock,
+      bajoStock: productosApi.bajoStock,
     };
     try {
       const resultado = await apis[seccion]();
@@ -57,8 +83,28 @@ export function DatosProvider({ children }) {
     }
   }, []);
 
+  // Datos filtrados por período — se recalculan solos al cambiar el período
+  const datosFiltrados = useMemo(() => ({
+    ventas: aplicarFiltro(datos.ventas, periodo),
+    compras: aplicarFiltro(datos.compras, periodo),
+    gastos: aplicarFiltro(datos.gastos, periodo),
+  }), [datos.ventas, datos.compras, datos.gastos, periodo]);
+
   return (
-    <DatosContext.Provider value={{ ...datos, cargando, recargar, recargarTodo: cargarTodo }}>
+    <DatosContext.Provider value={{
+      // Datos crudos (para páginas que no necesitan filtro)
+      ...datos,
+      // Datos filtrados (para dashboard y totales)
+      ventasFiltradas: datosFiltrados.ventas,
+      comprasFiltradas: datosFiltrados.compras,
+      gastosFiltrados: datosFiltrados.gastos,
+      // Control del período
+      periodo,
+      setPeriodo,
+      cargando,
+      recargar,
+      recargarTodo: cargarTodo,
+    }}>
       {children}
     </DatosContext.Provider>
   );

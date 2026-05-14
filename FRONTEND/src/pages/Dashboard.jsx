@@ -5,7 +5,7 @@ import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 export default function Dashboard() {
-  const { ventas, compras, gastos, bajoStock, cargando } = useDatosGlobal();
+  const { ventasFiltradas: ventas, comprasFiltradas: compras, gastosFiltrados: gastos, bajoStock, cargando } = useDatosGlobal();
 
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];

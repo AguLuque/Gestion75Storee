@@ -115,7 +115,7 @@ export default function Productos() {
               </td>
               <td className="py-3 pr-4">
                 <Badge color={p.stock_actual === 0 ? 'rojo' : p.stock_actual <= 2 ? 'amarillo' : 'verde'}>
-                  {p.stock_actual} u.
+                  <span className="whitespace-nowrap">{p.stock_actual} u.</span>
                 </Badge>
               </td>
               <td className="py-3 pr-4 text-slate-500 text-xs">{formatearPrecio(p.precio_compra)}</td>

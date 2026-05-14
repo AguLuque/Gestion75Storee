@@ -92,7 +92,7 @@ export function Badge({ children, color = 'default', className }) {
     violeta: 'bg-purple-100 text-purple-700',
   };
   return (
-    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', colores[color], className)}>
+    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', colores[color], className)}>
       {children}
     </span>
   );
@@ -130,12 +130,12 @@ export function Modal({ abierto, onCerrar, titulo, children, className }) {
 // --- Tabla base ---
 export function Tabla({ columnas, datos, renderFila, vacio = 'Sin datos' }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto -mx-5 px-5">
+      <table className="w-full text-sm min-w-[500px]">
         <thead>
           <tr className="border-b border-slate-100">
             {columnas.map((col, i) => (
-              <th key={i} className="text-left text-xs font-medium text-slate-500 pb-3 pr-4 last:pr-0">
+              <th key={i} className="text-left text-xs font-medium text-slate-500 pb-3 pr-4 last:pr-0 whitespace-nowrap">
                 {col}
               </th>
             ))}
@@ -180,13 +180,13 @@ export function StatCard({ titulo, valor, icono, color = 'azul' }) {
   };
 
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{titulo}</p>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{valor}</p>
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide truncate">{titulo}</p>
+          <p className="text-lg lg:text-xl font-bold text-slate-800 mt-1 break-words">{valor}</p>
         </div>
-        <div className={cn('p-2.5 rounded-xl text-lg', colores[color])}>
+        <div className={cn('p-2 rounded-xl text-base flex-shrink-0', colores[color])}>
           {icono}
         </div>
       </div>

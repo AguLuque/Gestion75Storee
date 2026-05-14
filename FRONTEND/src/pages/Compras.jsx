@@ -9,7 +9,7 @@ import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioCompra from '../components/FormularioCompra.jsx';
 
 export default function Compras() {
-  const { compras, productos, proveedores, cargando, recargar } = useDatosGlobal();
+  const { comprasFiltradas: compras, productos, proveedores, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 

@@ -15,7 +15,7 @@ const CATEGORIAS_GASTO = ['Servicios', 'Alquiler', 'Transporte', 'Marketing', 'P
 const formularioVacio = { descripcion: '', monto: '', categoria: '' };
 
 export default function Gastos() {
-  const { gastos, cargando, recargar } = useDatosGlobal();
+  const { gastosFiltrados: gastos, cargando, recargar } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
