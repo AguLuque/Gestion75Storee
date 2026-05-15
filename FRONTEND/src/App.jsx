@@ -1,7 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { DatosProvider } from './context/DatosContext.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
+import RutaProtegida from './components/RutaProtegida.jsx';
 import Layout from './components/Layout.jsx';
+import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Productos from './pages/Productos.jsx';
 import Ventas from './pages/Ventas.jsx';
@@ -14,10 +17,20 @@ import Deudores from './pages/Deudores.jsx';
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <DatosProvider>
+      <AuthProvider>
+        <ToastProvider>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <RutaProtegida>
+                  <DatosProvider>
+                    <Layout />
+                  </DatosProvider>
+                </RutaProtegida>
+              }
+            >
               <Route index element={<Dashboard />} />
               <Route path="productos" element={<Productos />} />
               <Route path="ventas" element={<Ventas />} />
@@ -28,8 +41,8 @@ export default function App() {
               <Route path="deudores" element={<Deudores />} />
             </Route>
           </Routes>
-        </DatosProvider>
-      </ToastProvider>
+        </ToastProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

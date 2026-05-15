@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, TrendingUp,
-  Tag, Truck, DollarSign, Users, X
+  Tag, Truck, DollarSign, Users, X, LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 import { cn } from '../utils.js';
 
 const items = [
@@ -17,6 +18,8 @@ const items = [
 ];
 
 export default function Sidebar({ cerrar, cerrarMenu }) {
+  const { cerrarSesion } = useAuth();
+
   return (
     <aside className="w-56 bg-white border-r border-slate-200 h-full flex flex-col">
       {/* Logo */}
@@ -55,8 +58,14 @@ export default function Sidebar({ cerrar, cerrarMenu }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-100">
-        <p className="text-xs text-slate-400">v1.0.0</p>
+      <div className="px-3 py-4 border-t border-slate-100">
+        <button
+          onClick={cerrarSesion}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all w-full"
+        >
+          <LogOut size={16} />
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   );
