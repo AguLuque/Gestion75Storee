@@ -30,12 +30,12 @@ export default function Dashboard() {
         <p className="text-sm text-slate-500 mt-0.5">Resumen general del negocio</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard titulo="Total vendido" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="verde" />
         <StatCard titulo="Total comprado" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="amarillo" />
         <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono={<Wallet size={18} />} color="rojo" />
-        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.gananciaBruta)} icono={<DollarSign size={18} />} color={stats.gananciaBruta >= 0 ? 'azul' : 'rojo'} />
-        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono={<BarChart3 size={18} />} color={stats.gananciaNeta >= 0 ? 'verde' : 'rojo'} />
+        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.gananciaBruta)} icono={<DollarSign size={18} />} color={stats.gananciaBruta >= 0 ? 'azul' : 'azul'} />
+        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono={<BarChart3 size={18} />} color={stats.gananciaNeta >= 0 ? 'verde' : 'verde'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

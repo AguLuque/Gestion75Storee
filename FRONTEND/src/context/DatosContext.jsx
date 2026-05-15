@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedoresApi } from '../services/api.js';
+import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedoresApi, deudoresApi  } from '../services/api.js';
 
 const DatosContext = createContext(null);
 
@@ -32,7 +32,7 @@ function aplicarFiltro(lista, periodo, campo = 'fecha') {
 export function DatosProvider({ children }) {
   const [datos, setDatos] = useState({
     ventas: [], compras: [], productos: [], gastos: [],
-    categorias: [], proveedores: [], bajoStock: [],
+    categorias: [], proveedores: [], bajoStock: [], deudores: [],
   });
   const [cargando, setCargando] = useState(true);
   const [periodo, setPeriodo] = useState('mes');
@@ -47,9 +47,10 @@ export function DatosProvider({ children }) {
       categoriasApi.listar(),
       proveedoresApi.listar(),
       productosApi.bajoStock(),
+      deudoresApi.listar(),
     ]);
 
-    const [ventas, compras, productos, gastos, categorias, proveedores, bajoStock] = resultados;
+    const [ventas, compras, productos, gastos, categorias, proveedores, bajoStock, deudores] = resultados;
 
     setDatos({
       ventas: ventas.status === 'fulfilled' ? ventas.value : [],
@@ -59,6 +60,7 @@ export function DatosProvider({ children }) {
       categorias: categorias.status === 'fulfilled' ? categorias.value : [],
       proveedores: proveedores.status === 'fulfilled' ? proveedores.value : [],
       bajoStock: bajoStock.status === 'fulfilled' ? bajoStock.value : [],
+      deudores: deudores.status === 'fulfilled' ? deudores.value : [],
     });
     setCargando(false);
   }, []);
@@ -74,6 +76,7 @@ export function DatosProvider({ children }) {
       categorias: categoriasApi.listar,
       proveedores: proveedoresApi.listar,
       bajoStock: productosApi.bajoStock,
+      deudores: deudoresApi.listar,
     };
     try {
       const resultado = await apis[seccion]();

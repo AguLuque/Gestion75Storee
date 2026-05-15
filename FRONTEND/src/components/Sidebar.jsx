@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, TrendingUp,
-  Tag, Truck, DollarSign, X
+  Tag, Truck, DollarSign, Users, X
 } from 'lucide-react';
 import { cn } from '../utils.js';
 
@@ -13,6 +13,7 @@ const items = [
   { a: '/gastos', icono: DollarSign, etiqueta: 'Gastos' },
   { a: '/categorias', icono: Tag, etiqueta: 'Categorías' },
   { a: '/proveedores', icono: Truck, etiqueta: 'Proveedores' },
+  { a: '/deudores', icono: Users, etiqueta: 'Deudores' },
 ];
 
 export default function Sidebar({ cerrar, cerrarMenu }) {

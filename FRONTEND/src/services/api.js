@@ -81,3 +81,11 @@ export const variantesApi = {
   eliminar: (id) => peticion(`/variantes/${id}`, { method: 'DELETE' }),
   ajustarStock: (id, stock_actual) => peticion(`/variantes/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ stock_actual }) }),
 };
+
+// Deudores
+export const deudoresApi = {
+  listar: () => peticion('/deudores'),
+  crear: (datos) => peticion('/deudores', { method: 'POST', body: JSON.stringify(datos) }),
+  actualizar: (id, datos) => peticion(`/deudores/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
+  eliminar: (id) => peticion(`/deudores/${id}`, { method: 'DELETE' }),
+};

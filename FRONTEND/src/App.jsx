@@ -9,6 +9,7 @@ import Compras from './pages/Compras.jsx';
 import Gastos from './pages/Gastos.jsx';
 import Categorias from './pages/Categorias.jsx';
 import Proveedores from './pages/Proveedores.jsx';
+import Deudores from './pages/Deudores.jsx';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="gastos" element={<Gastos />} />
               <Route path="categorias" element={<Categorias />} />
               <Route path="proveedores" element={<Proveedores />} />
+              <Route path="deudores" element={<Deudores />} />
             </Route>
           </Routes>
         </DatosProvider>
