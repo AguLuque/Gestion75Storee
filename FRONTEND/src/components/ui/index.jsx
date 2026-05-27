@@ -1,5 +1,6 @@
 import { cn } from '../../utils.js';
 import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 // --- Botón ---
 export function Boton({ children, variante = 'primario', tamaño = 'md', className, ...props }) {
@@ -205,5 +206,62 @@ export function ModalConfirmar({ abierto, onCerrar, onConfirmar, mensaje, cargan
         </Boton>
       </div>
     </Modal>
+  );
+}
+
+// --- Hook para formatear precios mientras se escribe ---
+export function usePrecio(valorInicial = '') {
+  const [display, setDisplay] = useState(
+    valorInicial ? Number(valorInicial).toLocaleString('es-AR') : ''
+  );
+
+  // Cuando cambia el valor inicial (al editar un producto existente)
+  useEffect(() => {
+    if (valorInicial !== '' && valorInicial !== undefined) {
+      setDisplay(Number(valorInicial).toLocaleString('es-AR'));
+    }
+  }, [valorInicial]);
+
+  function onChange(e) {
+    // Sacar todo lo que no sea número
+    const soloNumeros = e.target.value.replace(/\D/g, '');
+    // Formatear con puntos de miles
+    const formateado = soloNumeros ? Number(soloNumeros).toLocaleString('es-AR') : '';
+    setDisplay(formateado);
+  }
+
+  // Valor numérico real para enviar al backend
+  const valorNumerico = Number(display.replace(/\./g, '').replace(/,/g, '')) || 0;
+
+  return { display, onChange, valorNumerico };
+}
+
+// --- Input de precio con formato automático ---
+export function InputPrecio({ label, valorInicial = '', onCambio, required, placeholder = '0', className }) {
+  const { display, onChange, valorNumerico } = usePrecio(valorInicial);
+
+  useEffect(() => {
+    onCambio?.(valorNumerico);
+  }, [valorNumerico]);
+
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={display}
+          onChange={onChange}
+          required={required}
+          placeholder={placeholder}
+          className={cn(
+            'border border-slate-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all w-full',
+            className
+          )}
+        />
+      </div>
+    </div>
   );
 }

@@ -5,8 +5,7 @@ import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 export default function Dashboard() {
-  const { ventasFiltradas: ventas, comprasFiltradas: compras, gastosFiltrados: gastos, bajoStock, cargando } = useDatosGlobal();
-
+  const { ventasFiltradas: ventas, comprasFiltradas: compras, gastosFiltrados: gastos, bajoStock, cargando, mesSeleccionado, esMesFuturo } = useDatosGlobal();
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];
   const listaGastos = Array.isArray(gastos) ? gastos : [];
@@ -31,11 +30,11 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard titulo="Total vendido" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="verde" />
-        <StatCard titulo="Total comprado" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="amarillo" />
-        <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono={<Wallet size={18} />} color="rojo" />
-        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.gananciaBruta)} icono={<DollarSign size={18} />} color={stats.gananciaBruta >= 0 ? 'azul' : 'azul'} />
-        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono={<BarChart3 size={18} />} color={stats.gananciaNeta >= 0 ? 'verde' : 'verde'} />
+        <StatCard titulo="Total vendido" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="azul" />
+        <StatCard titulo="Total comprado" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="azul" />
+        <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono={<Wallet size={18} />} color="azul" />
+        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.gananciaBruta)} icono={<DollarSign size={18} />} color={stats.gananciaBruta >= 0 ? 'azul' : 'rojo'} />
+        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono={<BarChart3 size={18} />} color={stats.gananciaNeta >= 0 ? 'azul' : 'rojo'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

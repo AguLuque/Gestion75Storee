@@ -9,7 +9,7 @@ import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioCompra from '../components/FormularioCompra.jsx';
 
 export default function Compras() {
-  const { comprasFiltradas: compras, productos, proveedores, cargando, recargar } = useDatosGlobal();
+  const { comprasFiltradas: compras, productos, proveedores, cargando, recargar, esMesFuturo } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -17,13 +17,13 @@ export default function Compras() {
   const [compraEditando, setCompraEditando] = useState(null);
   const [expandida, setExpandida] = useState(null);
 
-  function abrirCrear() {
-    setCompraEditando(null);
-    setModalAbierto(true);
-  }
 
-  function abrirEditar(compra) {
-    setCompraEditando(compra);
+  function abrirCrear() {
+    if (esMesFuturo) {
+      mostrarToast('No podés registrar compras en meses futuros.', 'error');
+      return;
+    }
+    setCompraEditando(null);
     setModalAbierto(true);
   }
 

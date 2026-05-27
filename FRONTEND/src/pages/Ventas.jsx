@@ -9,7 +9,7 @@ import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioVenta from '../components/FormularioVenta.jsx';
 
 export default function Ventas() {
-  const { ventasFiltradas: ventas, productos, cargando, recargar } = useDatosGlobal();
+  const { ventasFiltradas: ventas, productos, cargando, recargar, esMesFuturo } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -37,7 +37,13 @@ export default function Ventas() {
           <h1 className="text-xl font-bold text-slate-800">Ventas</h1>
           <p className="text-sm text-slate-500">{ventas?.length || 0} ventas registradas</p>
         </div>
-        <Boton onClick={() => setModalAbierto(true)}>
+        <Boton onClick={() => {
+          if (esMesFuturo) {
+            mostrarToast('No podés registrar ventas en meses futuros.', 'error');
+            return;
+          }
+          setModalAbierto(true);
+        }}>
           <Plus size={16} /> Nueva venta
         </Boton>
       </div>

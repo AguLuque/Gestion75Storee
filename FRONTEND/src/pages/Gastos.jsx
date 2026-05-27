@@ -15,7 +15,7 @@ const CATEGORIAS_GASTO = ['Servicios', 'Alquiler', 'Transporte', 'Marketing', 'P
 const formularioVacio = { descripcion: '', monto: '', categoria: '' };
 
 export default function Gastos() {
-  const { gastosFiltrados: gastos, cargando, recargar } = useDatosGlobal();
+  const { gastosFiltrados: gastos, cargando, recargar, esMesFuturo } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -25,6 +25,10 @@ export default function Gastos() {
   const [confirmEliminar, setConfirmEliminar] = useState(null);
 
   function abrirCrear() {
+    if (esMesFuturo) {
+      mostrarToast('No podés registrar gastos en meses futuros.', 'error');
+      return;
+    }
     setGastoEditando(null);
     setFormulario(formularioVacio);
     setModalAbierto(true);
