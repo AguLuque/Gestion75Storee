@@ -1,6 +1,3 @@
-// src/controllers/venta.controller.js
-// Delega la lógica transaccional al service de ventas
-
 import VentaModel from "../models/venta.model.js";
 import VentaService from "../services/venta.service.js";
 
@@ -59,6 +56,28 @@ const VentaController = {
       const venta = await VentaService.crearVenta({ tipo, observaciones, items });
 
       res.status(201).json({ success: true, data: venta });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // DELETE /ventas/:id
+  delete: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const resultado = await VentaModel.delete(id);
+
+      if (!resultado) {
+        return res.status(404).json({
+          success: false,
+          error: "Venta no encontrada o ya fue eliminada.",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: `Venta del ${new Date(resultado.fecha).toLocaleDateString('es-AR')} por $${resultado.total} eliminada correctamente.`,
+      });
     } catch (err) {
       next(err);
     }

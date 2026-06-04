@@ -56,6 +56,7 @@ export const ventasApi = {
   obtener: (id) => peticion(`/ventas/${id}`),
   crear: (datos) => peticion('/ventas', { method: 'POST', body: JSON.stringify(datos) }),
   porPeriodo: (desde, hasta) => peticion(`/ventas?desde=${desde}&hasta=${hasta}`),
+  eliminar: (id) => peticion(`/ventas/${id}`, { method: 'DELETE' }),
 };
 
 // Compras

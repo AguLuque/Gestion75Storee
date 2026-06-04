@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
 import { ventasApi, productosApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { Boton, Card, Modal, Badge, Spinner, Tabla } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Badge, Spinner, Tabla, ModalConfirmar } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioVenta from '../components/FormularioVenta.jsx';
 
@@ -15,6 +15,8 @@ export default function Ventas() {
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [expandida, setExpandida] = useState(null);
+  const [confirmEliminar, setConfirmEliminar] = useState(null);
+
 
   async function guardar(datos) {
     const resultado = await ejecutar(() => ventasApi.crear(datos));
@@ -23,6 +25,18 @@ export default function Ventas() {
       setModalAbierto(false);
       recargar('ventas');
       recargar('productos');
+    } else {
+      mostrarToast(resultado.error, 'error');
+    }
+  }
+
+
+  async function eliminar() {
+    const resultado = await ejecutar(() => ventasApi.eliminar(confirmEliminar.id));
+    if (resultado.ok) {
+      mostrarToast('Venta eliminada');
+      setConfirmEliminar(null);
+      recargar('ventas'); 
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -72,7 +86,21 @@ export default function Ventas() {
                       +{formatearPrecio(venta.ganancia)}
                     </span>
                   )}
-                  {expandida === venta.id ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                  {/* ← Botón eliminar con stopPropagation para no expandir */}
+                  <Boton
+                    variante="peligro"
+                    tamaño="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmEliminar(venta);
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </Boton>
+                  {expandida === venta.id
+                    ? <ChevronUp size={14} className="text-slate-400" />
+                    : <ChevronDown size={14} className="text-slate-400" />
+                  }
                 </div>
               </div>
 
@@ -112,6 +140,14 @@ export default function Ventas() {
           onCancelar={() => setModalAbierto(false)}
         />
       </Modal>
+
+      <ModalConfirmar
+        abierto={!!confirmEliminar}
+        onCerrar={() => setConfirmEliminar(null)}
+        onConfirmar={eliminar}
+        mensaje={`¿Eliminar la venta? Esta acción desactivará y no podrá ver la venta.`}
+        cargando={guardando}
+      />
     </div>
   );
 }

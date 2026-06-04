@@ -8,27 +8,23 @@ const VentaModel = {
   // Obtener todas las ventas con sus ítems
   getAll: async () => {
     const { rows } = await pool.query(`
-      SELECT
-        v.id,
-        v.fecha,
-        v.tipo,
-        v.total,
-        v.ganancia,
-        v.observaciones,
-        json_agg(json_build_object(
-          'producto_id', vi.producto_id,
-          'producto', p.nombre,
-          'cantidad', vi.cantidad,
-          'precio_unitario', vi.precio_unitario,
-          'costo_unitario', vi.costo_unitario,
-          'subtotal', vi.subtotal
-        )) AS items
-      FROM ventas v
-      JOIN venta_items vi ON vi.venta_id = v.id
-      JOIN productos p ON p.id = vi.producto_id
-      GROUP BY v.id
-      ORDER BY v.fecha DESC
-    `);
+    SELECT
+      v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones,
+      json_agg(json_build_object(
+        'producto_id', vi.producto_id,
+        'producto', p.nombre,
+        'cantidad', vi.cantidad,
+        'precio_unitario', vi.precio_unitario,
+        'costo_unitario', vi.costo_unitario,
+        'subtotal', vi.subtotal
+      )) AS items
+    FROM ventas v
+    JOIN venta_items vi ON vi.venta_id = v.id
+    JOIN productos p ON p.id = vi.producto_id
+    WHERE v.activo = true
+    GROUP BY v.id
+    ORDER BY v.fecha DESC
+  `);
     return rows;
   },
 
@@ -89,6 +85,16 @@ const VentaModel = {
       [desde, hasta]
     );
     return rows;
+  },
+
+  delete: async (id) => {
+    const { rows } = await pool.query(
+      `UPDATE ventas SET activo = false
+     WHERE id = $1 AND activo = true
+     RETURNING id, total, fecha`,
+      [id]
+    );
+    return rows[0] || null;
   },
 
   // Insertar cabecera de venta (dentro de una transacción)
