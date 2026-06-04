@@ -1,24 +1,38 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3 } from 'lucide-react';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 export default function Dashboard() {
-  const { ventasFiltradas: ventas, comprasFiltradas: compras, gastosFiltrados: gastos, bajoStock, cargando, mesSeleccionado, esMesFuturo } = useDatosGlobal();
+  const navigate = useNavigate();
+
+  const {
+    ventasFiltradas: ventas,
+    comprasFiltradas: compras,
+    gastosFiltrados: gastos,
+    deudores,
+    bajoStock,
+    cargando,
+    mesSeleccionado,
+    esMesFuturo
+  } = useDatosGlobal();
+
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];
   const listaGastos = Array.isArray(gastos) ? gastos : [];
   const listaBajoStock = Array.isArray(bajoStock) ? bajoStock : [];
-
+  const listaDeudores = Array.isArray(deudores) ? deudores : [];
   const stats = useMemo(() => {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0), 0);
     const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
     const gananciaBruta = totalVentas - totalCompras;
     const gananciaNeta = gananciaBruta - totalGastos;
-    return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta };
-  }, [listaVentas, listaCompras, listaGastos]);
+    const totalDeudasPorCobrar = listaDeudores.reduce((s, d) => s + Number(d.monto || 0), 0);
+    return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalDeudasPorCobrar };
+  }, [listaVentas, listaCompras, listaGastos, listaDeudores]);
 
   if (cargando) return <Spinner />;
 
@@ -29,12 +43,52 @@ export default function Dashboard() {
         <p className="text-sm text-slate-500 mt-0.5">Resumen general del negocio</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard titulo="Total vendido" valor={formatearPrecio(stats.totalVentas)} icono={<TrendingUp size={18} />} color="azul" />
-        <StatCard titulo="Total comprado" valor={formatearPrecio(stats.totalCompras)} icono={<ShoppingCart size={18} />} color="azul" />
-        <StatCard titulo="Gastos" valor={formatearPrecio(stats.totalGastos)} icono={<Wallet size={18} />} color="azul" />
-        <StatCard titulo="Ganancia bruta" valor={formatearPrecio(stats.gananciaBruta)} icono={<DollarSign size={18} />} color={stats.gananciaBruta >= 0 ? 'azul' : 'rojo'} />
-        <StatCard titulo="Ganancia neta" valor={formatearPrecio(stats.gananciaNeta)} icono={<BarChart3 size={18} />} color={stats.gananciaNeta >= 0 ? 'azul' : 'rojo'} />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <StatCard
+          titulo="Total vendido"
+          valor={formatearPrecio(stats.totalVentas)}
+          icono={<TrendingUp size={18} />}
+          color="azul"
+          onClick={() => navigate('/ventas')}
+        />
+
+        <StatCard
+          titulo="Total comprado"
+          valor={formatearPrecio(stats.totalCompras)}
+          icono={<ShoppingCart size={18} />}
+          color="azul"
+          onClick={() => navigate('/compras')}
+        />
+
+        <StatCard
+          titulo="Gastos"
+          valor={formatearPrecio(stats.totalGastos)}
+          icono={<Wallet size={18} />}
+          color="azul"
+          onClick={() => navigate('/gastos')}
+        />
+
+        <StatCard
+          titulo="Ganancia bruta"
+          valor={formatearPrecio(stats.gananciaBruta)}
+          icono={<DollarSign size={18} />}
+          color={stats.gananciaBruta >= 0 ? 'azul' : 'rojo'}
+        />
+
+        <StatCard
+          titulo="Ganancia neta"
+          valor={formatearPrecio(stats.gananciaNeta)}
+          icono={<BarChart3 size={18} />}
+          color={stats.gananciaNeta >= 0 ? 'azul' : 'rojo'}
+        />
+
+        <StatCard
+          titulo="Deudas por cobrar"
+          valor={formatearPrecio(stats.totalDeudasPorCobrar)}
+          icono={<AlertTriangle size={18} />}
+          color="azul"
+          onClick={() => navigate('/deudores')}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { Boton, Select, Textarea, Input, Modal } from './ui/index.jsx';
+import { Boton, Select, Textarea, Input, InputPrecio, Modal } from './ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
 import { productosApi, categoriasApi } from '../services/api.js';
 import { useAccion } from '../hooks/useDatos.js';
@@ -19,7 +19,7 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
   const { mostrarToast } = useToast();
 
   useEffect(() => {
-    categoriasApi.listar().then(setCategorias).catch(() => {});
+    categoriasApi.listar().then(setCategorias).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -129,9 +129,12 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
               <input type="number" min="1" value={item.cantidad}
                 onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}
                 placeholder="Cant." className="w-20 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-              <input type="number" min="0" value={item.precio_unitario}
-                onChange={e => actualizarItem(idx, 'precio_unitario', e.target.value)}
-                placeholder="Costo" className="w-28 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <InputPrecio
+                valorInicial={item.precio_unitario}
+                onCambio={valor =>
+                  actualizarItem(idx, 'precio_unitario', valor)
+                }
+              />
               {items.length > 1 && (
                 <Boton variante="peligro" tamaño="sm" type="button" onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}>
                   <Trash2 size={14} />
@@ -166,9 +169,41 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
             {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </Select>
           <div className="grid grid-cols-3 gap-2">
-            <Input label="P. Compra" type="number" min="0" value={nuevoProducto.precio_compra} onChange={e => setNuevoProducto(p => ({ ...p, precio_compra: e.target.value }))} placeholder="0" />
-            <Input label="P. Minorista" type="number" min="0" value={nuevoProducto.precio_minorista} onChange={e => setNuevoProducto(p => ({ ...p, precio_minorista: e.target.value }))} placeholder="0" />
-            <Input label="P. Mayorista" type="number" min="0" value={nuevoProducto.precio_mayorista} onChange={e => setNuevoProducto(p => ({ ...p, precio_mayorista: e.target.value }))} placeholder="0" />
+            <InputPrecio
+              label="P. Compra"
+              valorInicial={nuevoProducto.precio_compra}
+              onCambio={valor =>
+                setNuevoProducto(p => ({
+                  ...p,
+                  precio_compra: valor,
+                }))
+              }
+              placeholder="0"
+            />
+
+            <InputPrecio
+              label="P. Minorista"
+              valorInicial={nuevoProducto.precio_minorista}
+              onCambio={valor =>
+                setNuevoProducto(p => ({
+                  ...p,
+                  precio_minorista: valor,
+                }))
+              }
+              placeholder="0"
+            />
+
+            <InputPrecio
+              label="P. Mayorista"
+              valorInicial={nuevoProducto.precio_mayorista}
+              onCambio={valor =>
+                setNuevoProducto(p => ({
+                  ...p,
+                  precio_mayorista: valor,
+                }))
+              }
+              placeholder="0"
+            />
           </div>
           <div className="flex gap-2 justify-end pt-1">
             <Boton variante="secundario" type="button" onClick={() => setModalNuevoProducto(false)} disabled={creandoProducto}>Cancelar</Boton>

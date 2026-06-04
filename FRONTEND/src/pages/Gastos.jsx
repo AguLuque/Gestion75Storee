@@ -5,7 +5,7 @@ import { gastosApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import {
-  Boton, Card, Modal, Input, Select, Textarea,
+  Boton, Card, Modal, Input, InputPrecio, Select, Textarea,
   Spinner, Tabla, ModalConfirmar, Badge
 } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
@@ -127,7 +127,7 @@ export default function Gastos() {
             required
             placeholder="Ej: Pago de alquiler"
           />
-          <Input
+          <InputPrecio
             label="Monto *"
             type="number"
             min="0"

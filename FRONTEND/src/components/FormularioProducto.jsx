@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Boton, Input, Select } from './ui/index.jsx';
+import { Boton, Input, InputPrecio, Select } from './ui/index.jsx';
 
 export default function FormularioProducto({ productoInicial, categorias, onGuardar, guardando, onCancelar }) {
   const [formulario, setFormulario] = useState({
@@ -62,34 +62,25 @@ export default function FormularioProducto({ productoInicial, categorias, onGuar
       </Select>
 
       <div className="grid grid-cols-2 gap-3">
-        <Input
+        <InputPrecio
           label="Precio minorista *"
-          type="number"
-          min="0"
-          value={formulario.precio_minorista}
-          onChange={e => actualizar('precio_minorista', e.target.value)}
+          valorInicial={formulario.precio_minorista}
+          onCambio={(valor) => actualizar('precio_minorista', valor)}
           required
-          placeholder="0"
         />
-        <Input
+        <InputPrecio
           label="Precio mayorista *"
-          type="number"
-          min="0"
-          value={formulario.precio_mayorista}
-          onChange={e => actualizar('precio_mayorista', e.target.value)}
+          valorInicial={formulario.precio_mayorista}
+          onCambio={(valor) => actualizar('precio_mayorista', valor)}
           required
-          placeholder="0"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Input
+        <InputPrecio
           label="Precio de compra"
-          type="number"
-          min="0"
-          value={formulario.precio_compra}
-          onChange={e => actualizar('precio_compra', e.target.value)}
-          placeholder="0"
+          valorInicial={formulario.precio_compra}
+          onCambio={(valor) => actualizar('precio_compra', valor)}
         />
         <Input
           label="Stock"

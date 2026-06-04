@@ -63,7 +63,14 @@ export const ventasApi = {
 export const comprasApi = {
   listar: () => peticion('/compras'),
   obtener: (id) => peticion(`/compras/${id}`),
-  crear: (datos) => peticion('/compras', { method: 'POST', body: JSON.stringify(datos) }),
+  crear: (datos) => peticion('/compras', {
+    method: 'POST',
+    body: JSON.stringify(datos)
+  }),
+  actualizar: (id, datos) => peticion(`/compras/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(datos)
+  }),
 };
 
 // Gastos

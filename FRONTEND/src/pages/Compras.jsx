@@ -23,10 +23,15 @@ export default function Compras() {
       mostrarToast('No podés registrar compras en meses futuros.', 'error');
       return;
     }
+
     setCompraEditando(null);
     setModalAbierto(true);
   }
 
+  function abrirEditar(compra) {
+    setCompraEditando(compra);
+    setModalAbierto(true);
+  }
   async function guardar(datos) {
     const accion = compraEditando
       ? () => comprasApi.actualizar(compraEditando.id, datos)

@@ -4,7 +4,7 @@ import { useAccion } from '../hooks/useDatos.js';
 import { deudoresApi } from '../services/api.js';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { Boton, Card, Modal, Input, Textarea, Spinner, Tabla, ModalConfirmar, Badge } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Input, InputPrecio, Textarea, Spinner, Tabla, ModalConfirmar, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 const formularioVacio = { nombre: '', monto: '', plazo: '', observaciones: '' };
@@ -153,7 +153,7 @@ export default function Deudores() {
             required
             placeholder="Nombre del deudor"
           />
-          <Input
+          <InputPrecio
             label="Monto *"
             type="number"
             min="0"

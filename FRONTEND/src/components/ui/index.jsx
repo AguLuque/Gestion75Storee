@@ -172,7 +172,14 @@ export function Spinner({ className }) {
 }
 
 // --- Stat Card ---
-export function StatCard({ titulo, valor, icono, color = 'azul' }) {
+// --- Stat Card ---
+export function StatCard({
+  titulo,
+  valor,
+  icono,
+  color = 'azul',
+  onClick
+}) {
   const colores = {
     azul: 'bg-blue-50 text-blue-600',
     verde: 'bg-green-50 text-green-600',
@@ -181,11 +188,23 @@ export function StatCard({ titulo, valor, icono, color = 'azul' }) {
   };
 
   return (
-    <Card className="p-4">
+    <Card
+      onClick={onClick}
+      className={cn(
+        'p-4',
+        onClick && 'cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all'
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide truncate">{titulo}</p>
-          <p className="text-lg lg:text-xl font-bold text-slate-800 mt-1 break-all">{valor}</p>        </div>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide truncate">
+            {titulo}
+          </p>
+          <p className="text-lg lg:text-xl font-bold text-slate-800 mt-1 break-all">
+            {valor}
+          </p>
+        </div>
+
         <div className={cn('p-2 rounded-xl text-base flex-shrink-0', colores[color])}>
           {icono}
         </div>

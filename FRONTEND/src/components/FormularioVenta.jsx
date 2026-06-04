@@ -18,13 +18,38 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
       // Auto-rellenar precio según tipo de venta
       if (campo === 'producto_id' && valor) {
         const prod = productos.find(p => String(p.id) === valor);
+
         if (prod) {
           copia[idx].precio_unitario =
-            tipo === 'mayorista' ? prod.precio_mayorista : prod.precio_minorista;
+            tipo === 'mayorista'
+              ? prod.precio_mayorista
+              : prod.precio_minorista;
         }
       }
       return copia;
     });
+  }
+
+  function cambiarTipoVenta(nuevoTipo) {
+    setTipo(nuevoTipo);
+
+    setItems(prev =>
+      prev.map(item => {
+        const prod = productos.find(
+          p => String(p.id) === String(item.producto_id)
+        );
+
+        if (!prod) return item;
+
+        return {
+          ...item,
+          precio_unitario:
+            nuevoTipo === 'mayorista'
+              ? prod.precio_mayorista
+              : prod.precio_minorista,
+        };
+      })
+    );
   }
 
   function agregarItem() {
@@ -45,7 +70,6 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
     e.preventDefault();
     const itemsValidos = items.filter(i => i.producto_id && i.cantidad > 0 && i.precio_unitario > 0);
     if (itemsValidos.length === 0) return;
-
     onGuardar({
       tipo,
       observaciones: observaciones || null,
@@ -62,7 +86,7 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
       <Select
         label="Tipo de venta"
         value={tipo}
-        onChange={e => setTipo(e.target.value)}
+        onChange={e => cambiarTipoVenta(e.target.value)}
       >
         <option value="minorista">Minorista</option>
         <option value="mayorista">Mayorista</option>
@@ -99,13 +123,9 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
             </div>
             <div className="w-28">
               <input
-                type="number"
-                min="0"
-                value={item.precio_unitario}
-                onChange={e => actualizarItem(idx, 'precio_unitario', e.target.value)}
-                placeholder="Precio"
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
+                value={formatearPrecio(item.precio_unitario)}
+                readOnly
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 text-slate-700"
               />
             </div>
             {items.length > 1 && (
