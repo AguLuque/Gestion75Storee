@@ -45,7 +45,13 @@ export default function Deudores() {
 
   async function guardar(e) {
     e.preventDefault();
-    const datos = { ...formulario, monto: Number(formulario.monto) };
+    const datos = {
+      ...formulario,
+      monto: Number(formulario.monto),
+      plazo: formulario.plazo || null,
+      observaciones: formulario.observaciones || null,
+    };
+    console.log('Enviando datos:', datos);
     const accion = editando
       ? () => deudoresApi.actualizar(editando.id, datos)
       : () => deudoresApi.crear(datos);
@@ -155,10 +161,8 @@ export default function Deudores() {
           />
           <InputPrecio
             label="Monto *"
-            type="number"
-            min="0"
-            value={formulario.monto}
-            onChange={e => actualizar('monto', e.target.value)}
+            valorInicial={formulario.monto}
+            onCambio={valor => actualizar('monto', valor)}
             required
             placeholder="0"
           />
