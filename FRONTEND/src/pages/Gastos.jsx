@@ -129,10 +129,8 @@ export default function Gastos() {
           />
           <InputPrecio
             label="Monto *"
-            type="number"
-            min="0"
-            value={formulario.monto}
-            onChange={e => actualizar('monto', e.target.value)}
+            valorInicial={formulario.monto}
+            onCambio={valor => actualizar('monto', valor)}
             required
             placeholder="0"
           />
