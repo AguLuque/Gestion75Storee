@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Boton, Input, Select, Textarea } from './ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
+import { InputPrecio } from './ui/index.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
 
@@ -70,6 +71,7 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
     e.preventDefault();
     const itemsValidos = items.filter(i => i.producto_id && i.cantidad > 0 && i.precio_unitario > 0);
     if (itemsValidos.length === 0) return;
+    console.log('DEBUG items antes de enviar:', JSON.stringify(itemsValidos)); // ← temporal
     onGuardar({
       tipo,
       observaciones: observaciones || null,
@@ -122,10 +124,10 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
               />
             </div>
             <div className="w-28">
-              <input
-                value={formatearPrecio(item.precio_unitario)}
-                readOnly
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 text-slate-700"
+              <InputPrecio
+                valorInicial={item.precio_unitario}
+                onCambio={valor => actualizarItem(idx, 'precio_unitario', valor)}
+                placeholder="Precio"
               />
             </div>
             {items.length > 1 && (

@@ -236,9 +236,18 @@ export function usePrecio(valorInicial = '') {
 
   // Cuando cambia el valor inicial (al editar un producto existente)
   useEffect(() => {
-    if (valorInicial !== '' && valorInicial !== undefined) {
-      setDisplay(Number(valorInicial).toLocaleString('es-AR'));
-    }
+    const valorActualEnPantalla = Number(display.replace(/\./g, '').replace(/,/g, '')) || 0;
+    const valorEntrante = Number(valorInicial) || 0;
+
+    // Si el valor que llega es el mismo que ya tenemos mostrado, es el "eco"
+    // de lo que el usuario acaba de tipear (vino y volvió). No lo tocamos.
+    if (valorEntrante === valorActualEnPantalla) return;
+
+    setDisplay(
+      valorInicial !== '' && valorInicial !== undefined
+        ? Number(valorInicial).toLocaleString('es-AR')
+        : ''
+    );
   }, [valorInicial]);
 
   function onChange(e) {

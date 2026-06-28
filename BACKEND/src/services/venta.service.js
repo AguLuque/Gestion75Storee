@@ -59,11 +59,16 @@ const crearVenta = async ({ tipo, observaciones, items }) => {
         // checkStock bloquea la fila con FOR UPDATE y lanza error si no hay stock suficiente
         const variante = await VarianteModel.checkStock(client, item.variante_id, item.cantidad);
 
-        // precio_extra permite ajustar el precio base del producto para esta variante
         const precioBase =
           tipo === "mayorista" ? variante.precio_mayorista : variante.precio_minorista;
 
-        precio_unitario = precioBase + (variante.precio_extra ?? 0);
+        const precioDefault = precioBase + (variante.precio_extra ?? 0);
+
+        precio_unitario =
+          item.precio_unitario !== undefined && item.precio_unitario !== null
+            ? Number(item.precio_unitario)
+            : precioDefault;
+
         costo_unitario = variante.precio_compra;
       } else {
         // — Producto SIN variante —
@@ -88,8 +93,14 @@ const crearVenta = async ({ tipo, observaciones, items }) => {
           };
         }
 
-        precio_unitario =
+        const precioDefault =
           tipo === "mayorista" ? producto.precio_mayorista : producto.precio_minorista;
+
+        precio_unitario =
+          item.precio_unitario !== undefined && item.precio_unitario !== null
+            ? Number(item.precio_unitario)
+            : precioDefault;
+
         costo_unitario = producto.precio_compra;
       }
 
