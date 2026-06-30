@@ -9,11 +9,11 @@ const MESES = [
 ];
 
 const OPCIONES = [
-  { valor: 'dia',    etiqueta: 'Hoy' },
+  { valor: 'dia', etiqueta: 'Hoy' },
   { valor: 'semana', etiqueta: 'Semana' },
-  { valor: 'mes',    etiqueta: 'Mes' },
-  { valor: 'año',    etiqueta: 'Año' },
-  { valor: 'todo',   etiqueta: 'Todo' },
+  { valor: 'mes', etiqueta: 'Mes' },
+  { valor: 'año', etiqueta: 'Año' },
+  { valor: 'todo', etiqueta: 'Todo' },
 ];
 
 export default function FiltroPeriodoGlobal() {
@@ -56,7 +56,7 @@ export default function FiltroPeriodoGlobal() {
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all inline-flex items-center gap-1',
                 periodo === 'mes'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-300 text-slate-900'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               )}
             >
@@ -78,7 +78,7 @@ export default function FiltroPeriodoGlobal() {
                       className={cn(
                         'px-2 py-1.5 rounded-lg text-xs font-medium transition-all text-left',
                         periodo === 'mes' && mesSeleccionado === idx
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-primary-300 text-slate-900'
                           : 'text-slate-600 hover:bg-slate-50'
                       )}
                     >
@@ -96,7 +96,7 @@ export default function FiltroPeriodoGlobal() {
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
               periodo === op.valor
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-300 text-slate-900'
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
             )}
           >

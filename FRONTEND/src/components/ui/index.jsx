@@ -7,7 +7,7 @@ export function Boton({ children, variante = 'primario', tamaño = 'md', classNa
   const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer';
 
   const variantes = {
-    primario: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+    primario: 'bg-primary-300 text-slate-900 hover:bg-primary-400 hover:text-white focus:ring-primary-300',
     secundario: 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 focus:ring-slate-300',
     peligro: 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 focus:ring-red-300',
     fantasma: 'text-slate-600 hover:bg-slate-100 focus:ring-slate-300',
@@ -33,7 +33,7 @@ export function Input({ label, error, className, ...props }) {
       {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <input
         className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all',
+          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all',
           error && 'border-red-400 focus:ring-red-400',
           className
         )}
@@ -51,7 +51,7 @@ export function Select({ label, error, children, className, ...props }) {
       {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <select
         className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all',
+          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all',
           error && 'border-red-400',
           className
         )}
@@ -71,7 +71,7 @@ export function Textarea({ label, error, className, ...props }) {
       {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <textarea
         className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all resize-none',
+          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all resize-none',
           error && 'border-red-400',
           className
         )}
@@ -86,7 +86,7 @@ export function Textarea({ label, error, className, ...props }) {
 export function Badge({ children, color = 'default', className }) {
   const colores = {
     default: 'bg-slate-100 text-slate-600',
-    azul: 'bg-blue-100 text-blue-700',
+    azul: 'bg-primary-100 text-primary-700',
     verde: 'bg-green-100 text-green-700',
     rojo: 'bg-red-100 text-red-600',
     amarillo: 'bg-yellow-100 text-yellow-700',
@@ -166,12 +166,11 @@ export function Tabla({ columnas, datos, renderFila, vacio = 'Sin datos' }) {
 export function Spinner({ className }) {
   return (
     <div className={cn('flex items-center justify-center py-12', className)}>
-      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
 
-// --- Stat Card ---
 // --- Stat Card ---
 export function StatCard({
   titulo,
@@ -181,7 +180,7 @@ export function StatCard({
   onClick
 }) {
   const colores = {
-    azul: 'bg-blue-50 text-blue-600',
+    azul: 'bg-primary-50 text-primary-600',
     verde: 'bg-green-50 text-green-600',
     amarillo: 'bg-yellow-50 text-yellow-600',
     rojo: 'bg-red-50 text-red-600',
@@ -285,7 +284,7 @@ export function InputPrecio({ label, valorInicial = '', onCambio, required, plac
           required={required}
           placeholder={placeholder}
           className={cn(
-            'border border-slate-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all w-full',
+            'border border-slate-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all w-full',
             className
           )}
         />
