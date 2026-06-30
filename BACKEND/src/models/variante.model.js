@@ -7,15 +7,15 @@ import pool from "../config/db.js";
 
 const VarianteModel = {
   // Obtener todas las variantes de un producto
-  getByProducto: async (producto_id) => {
+  getByProducto: async (producto_id, usuario_id) => {
     const { rows } = await pool.query(
       `SELECT v.*, p.nombre AS producto_nombre,
-              p.precio_minorista, p.precio_mayorista, p.precio_compra
-       FROM variantes v
-       JOIN productos p ON p.id = v.producto_id
-       WHERE v.producto_id = $1
-       ORDER BY v.talle ASC, v.color ASC`,
-      [producto_id]
+            p.precio_minorista, p.precio_mayorista, p.precio_compra
+     FROM variantes v
+     JOIN productos p ON p.id = v.producto_id
+     WHERE v.producto_id = $1 AND p.usuario_id = $2
+     ORDER BY v.talle ASC, v.color ASC`,
+      [producto_id, usuario_id]
     );
     return rows;
   },
@@ -117,13 +117,13 @@ const VarianteModel = {
   },
 
   // Variantes sin stock de un producto
-  getSinStock: async (producto_id) => {
+  getSinStock: async (producto_id, usuario_id) => {
     const { rows } = await pool.query(
       `SELECT v.*, p.nombre AS producto_nombre
-       FROM variantes v
-       JOIN productos p ON p.id = v.producto_id
-       WHERE v.stock_actual = 0 AND v.producto_id = $1`,
-      [producto_id]
+     FROM variantes v
+     JOIN productos p ON p.id = v.producto_id
+     WHERE v.stock_actual = 0 AND v.producto_id = $1 AND p.usuario_id = $2`,
+      [producto_id, usuario_id]
     );
     return rows;
   },

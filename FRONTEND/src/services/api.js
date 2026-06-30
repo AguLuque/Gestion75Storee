@@ -1,11 +1,16 @@
-// Servicio centralizado de llamadas al backend
+import { supabase } from '../lib/supabase';
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 async function peticion(ruta, opciones = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+
   const respuesta = await fetch(`${BASE_URL}${ruta}`, {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...opciones.headers
     },
     cache: 'no-store',

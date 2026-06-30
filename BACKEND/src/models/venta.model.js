@@ -6,10 +6,9 @@ import pool from "../config/db.js";
 
 const VentaModel = {
   // Obtener todas las ventas con sus ítems
-  getAll: async () => {
+  getAll: async (usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT
-      v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones,
       json_agg(json_build_object(
         'producto_id', vi.producto_id,
         'producto', p.nombre,
@@ -21,91 +20,71 @@ const VentaModel = {
     FROM ventas v
     JOIN venta_items vi ON vi.venta_id = v.id
     JOIN productos p ON p.id = vi.producto_id
-    WHERE v.activo = true
+    WHERE v.activo = true AND v.usuario_id = $1
     GROUP BY v.id
     ORDER BY v.fecha DESC
-  `);
+  `, [usuario_id]);
     return rows;
   },
 
   // Obtener una venta por ID con sus ítems
-  getById: async (id) => {
-    const { rows } = await pool.query(
-      `
-      SELECT
-        v.id,
-        v.fecha,
-        v.tipo,
-        v.total,
-        v.ganancia,
-        v.observaciones,
-        json_agg(json_build_object(
-          'producto_id', vi.producto_id,
-          'producto', p.nombre,
-          'cantidad', vi.cantidad,
-          'precio_unitario', vi.precio_unitario,
-          'costo_unitario', vi.costo_unitario,
-          'subtotal', vi.subtotal
-        )) AS items
-      FROM ventas v
-      JOIN venta_items vi ON vi.venta_id = v.id
-      JOIN productos p ON p.id = vi.producto_id
-      WHERE v.id = $1
-      GROUP BY v.id
-    `,
-      [id]
-    );
+  getById: async (id, usuario_id) => {
+    const { rows } = await pool.query(`
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones,
+      json_agg(json_build_object(
+        'producto_id', vi.producto_id,
+        'producto', p.nombre,
+        'cantidad', vi.cantidad,
+        'precio_unitario', vi.precio_unitario,
+        'costo_unitario', vi.costo_unitario,
+        'subtotal', vi.subtotal
+      )) AS items
+    FROM ventas v
+    JOIN venta_items vi ON vi.venta_id = v.id
+    JOIN productos p ON p.id = vi.producto_id
+    WHERE v.id = $1 AND v.activo = true AND v.usuario_id = $2
+    GROUP BY v.id
+  `, [id, usuario_id]);
     return rows[0] || null;
   },
 
   // Obtener ventas filtradas por rango de fechas
-  getByPeriodo: async (desde, hasta) => {
-    const { rows } = await pool.query(
-      `
-      SELECT
-        v.id,
-        v.fecha,
-        v.tipo,
-        v.total,
-        v.ganancia,
-        json_agg(json_build_object(
-          'producto', p.nombre,
-          'cantidad', vi.cantidad,
-          'precio_unitario', vi.precio_unitario,
-          'costo_unitario', vi.costo_unitario,
-          'subtotal', vi.subtotal
-        )) AS items
-      FROM ventas v
-      JOIN venta_items vi ON vi.venta_id = v.id
-      JOIN productos p ON p.id = vi.producto_id
-      WHERE v.fecha BETWEEN $1 AND $2
-      GROUP BY v.id
-      ORDER BY v.fecha DESC
-    `,
-      [desde, hasta]
-    );
+  getByPeriodo: async (desde, hasta, usuario_id) => {
+    const { rows } = await pool.query(`
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia,
+      json_agg(json_build_object(
+        'producto', p.nombre,
+        'cantidad', vi.cantidad,
+        'precio_unitario', vi.precio_unitario,
+        'costo_unitario', vi.costo_unitario,
+        'subtotal', vi.subtotal
+      )) AS items
+    FROM ventas v
+    JOIN venta_items vi ON vi.venta_id = v.id
+    JOIN productos p ON p.id = vi.producto_id
+    WHERE v.fecha BETWEEN $1 AND $2 AND v.usuario_id = $3
+    GROUP BY v.id
+    ORDER BY v.fecha DESC
+  `, [desde, hasta, usuario_id]);
     return rows;
   },
 
-  delete: async (id) => {
+  delete: async (id, usuario_id) => {
     const { rows } = await pool.query(
       `UPDATE ventas SET activo = false
-     WHERE id = $1 AND activo = true
+     WHERE id = $1 AND activo = true AND usuario_id = $2
      RETURNING id, total, fecha`,
-      [id]
+      [id, usuario_id]
     );
     return rows[0] || null;
   },
 
   // Insertar cabecera de venta (dentro de una transacción)
-  insertCabecera: async (client, { tipo, total, ganancia, observaciones }) => {
+  insertCabecera: async (client, { tipo, total, ganancia, observaciones, usuario_id }) => {
     const { rows } = await client.query(
-      `
-      INSERT INTO ventas (tipo, total, ganancia, observaciones)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `,
-      [tipo, total, ganancia, observaciones ?? null]
+      `INSERT INTO ventas (tipo, total, ganancia, observaciones, usuario_id)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [tipo, total, ganancia, observaciones ?? null, usuario_id]
     );
     return rows[0];
   },

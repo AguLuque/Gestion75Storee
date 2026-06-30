@@ -21,7 +21,7 @@ import VarianteModel from "../models/variante.model.js";
  * }
  * @returns {Object} - La venta creada con sus ítems y ganancia
  */
-const crearVenta = async ({ tipo, observaciones, items }) => {
+const crearVenta = async ({ tipo, observaciones, items, usuario_id }) => {
   // Validaciones básicas
   if (!tipo || !["minorista", "mayorista"].includes(tipo)) {
     throw { status: 400, message: "El tipo de venta debe ser 'minorista' o 'mayorista'." };
@@ -125,6 +125,7 @@ const crearVenta = async ({ tipo, observaciones, items }) => {
       total,
       ganancia,
       observaciones,
+      usuario_id,
     });
 
     // Insertar ítems y descontar stock

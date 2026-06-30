@@ -2,7 +2,7 @@ import CompraModel from "../models/compra.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 
-const crearCompra = async ({ proveedor_id, observaciones, items }) => {
+const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw { status: 400, message: "Se requiere al menos un ítem en la compra." };
   }
@@ -25,8 +25,9 @@ const crearCompra = async ({ proveedor_id, observaciones, items }) => {
   try {
     await client.query("BEGIN");
 
-    const compra = await CompraModel.insertCabecera(client, { proveedor_id, total, observaciones });
-
+    const compra = await CompraModel.insertCabecera(client, {
+      proveedor_id, total, observaciones, usuario_id,
+    });
     const itemsCreados = [];
     for (const item of items) {
       const itemCreado = await CompraModel.insertItem(client, {
@@ -55,7 +56,7 @@ const crearCompra = async ({ proveedor_id, observaciones, items }) => {
   }
 };
 
-const editarCompra = async (id, { proveedor_id, observaciones, items }) => {
+const editarCompra = async (id, { proveedor_id, observaciones, items, usuario_id }) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw { status: 400, message: "Se requiere al menos un ítem." };
   }
@@ -66,14 +67,13 @@ const editarCompra = async (id, { proveedor_id, observaciones, items }) => {
   try {
     await client.query("BEGIN");
 
-    const compraAnterior = await CompraModel.getById(id);
+    const compraAnterior = await CompraModel.getById(id, usuario_id);
     for (const item of compraAnterior.items) {
       await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
     }
 
     await CompraModel.deleteItems(client, id);
-    await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones });
-
+    await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones }, usuario_id);
     for (const item of items) {
       await CompraModel.insertItem(client, {
         compra_id: id,
@@ -86,7 +86,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, items }) => {
     }
 
     await client.query("COMMIT");
-    return await CompraModel.getById(id);
+    return await CompraModel.getById(id, usuario_id);
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

@@ -8,27 +8,18 @@ const CompraController = {
   // GET /compras
   getAll: async (req, res, next) => {
     try {
-      const compras = await CompraModel.getAll();
+      const compras = await CompraModel.getAll(req.usuario_id);
       res.json({ success: true, data: compras });
-    } catch (err) {
-      next(err);
-    }
+    } catch (err) { next(err); }
   },
 
-  // GET /compras/:id
   getById: async (req, res, next) => {
     try {
       const { id } = req.params;
-      const compra = await CompraModel.getById(id);
-
-      if (!compra) {
-        return res.status(404).json({ success: false, error: "Compra no encontrada." });
-      }
-
+      const compra = await CompraModel.getById(id, req.usuario_id);
+      if (!compra) return res.status(404).json({ success: false, error: "Compra no encontrada." });
       res.json({ success: true, data: compra });
-    } catch (err) {
-      next(err);
-    }
+    } catch (err) { next(err); }
   },
 
   // POST /compras
@@ -36,24 +27,24 @@ const CompraController = {
   create: async (req, res, next) => {
     try {
       const { proveedor_id, observaciones, items } = req.body;
-
-      const compra = await CompraService.crearCompra({ proveedor_id, observaciones, items });
-
+      const compra = await CompraService.crearCompra({
+        proveedor_id, observaciones, items,
+        usuario_id: req.usuario_id,
+      });
       res.status(201).json({ success: true, data: compra });
-    } catch (err) {
-      next(err);
-    }
+    } catch (err) { next(err); }
   },
-  // PUT /compras/:id
+
   update: async (req, res, next) => {
     try {
       const { id } = req.params;
       const { proveedor_id, observaciones, items } = req.body;
-      const compra = await CompraService.editarCompra(id, { proveedor_id, observaciones, items });
+      const compra = await CompraService.editarCompra(id, {
+        proveedor_id, observaciones, items,
+        usuario_id: req.usuario_id,
+      });
       res.json({ success: true, data: compra });
-    } catch (err) {
-      next(err);
-    }
+    } catch (err) { next(err); }
   },
 };
 

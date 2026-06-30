@@ -35,7 +35,7 @@ export default function Layout() {
               <button onClick={() => setMenuAbierto(true)} className="text-slate-600 lg:hidden">
                 <Menu size={20} />
               </button>
-              <span className="font-semibold text-slate-800 lg:hidden">75Tienda</span>
+              <span className="font-semibold text-slate-800 lg:hidden">FluxoGest</span>
             </div>
             <div className="hidden lg:block">
               <FiltroPeriodoGlobal />

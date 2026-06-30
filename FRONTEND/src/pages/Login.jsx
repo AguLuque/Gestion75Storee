@@ -36,11 +36,10 @@ export default function Login() {
 
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl shadow-lg mb-4 overflow-hidden bg-white border border-slate-200">
-                        <img src="/Logo.png" alt="Logo" className="w-full h-full object-contain p-0" />
+                    <div className="inline-flex items-center justify-center w-150 h-40 rounded-2xl">
+                        <img src="/Logo.png" alt="Logo" className="w-full h-full object-contain p-2" />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-800">75 Storee</h1>
-                    <p className="text-sm text-slate-500 mt-1">Sistema de gestión</p>
+                    <h2 className="text-2xl font-bold text-slate-800">Sistema de gestión</h2>
                 </div>
 
                 {/* Card */}

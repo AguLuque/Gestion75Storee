@@ -28,7 +28,7 @@ export default function Dashboard() {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0), 0);
     const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
-    const gananciaBruta = totalVentas - totalCompras;
+    const gananciaBruta = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0);
     const gananciaNeta = gananciaBruta - totalGastos;
     const totalDeudasPorCobrar = listaDeudores.reduce((s, d) => s + Number(d.monto || 0), 0);
     return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalDeudasPorCobrar };

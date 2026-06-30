@@ -7,9 +7,11 @@ import ventaRoutes from "./venta.routes.js";
 import gastoRoutes from "./gasto.routes.js";
 import varianteRoutes from "./variante.routes.js";
 import deudorRoutes from "./deudor.routes.js";
-
+import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
+
+router.use(requireAuth);
 
 router.use("/productos", productoRoutes);
 router.use("/categorias", categoriaRoutes);

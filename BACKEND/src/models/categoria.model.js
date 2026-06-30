@@ -6,40 +6,42 @@ import pool from "../config/db.js";
 
 const CategoriaModel = {
   // Obtener todas las categorías ordenadas alfabéticamente
-  getAll: async () => {
-    const { rows } = await pool.query(`SELECT * FROM categorias ORDER BY nombre ASC`);
+  getAll: async (usuario_id) => {
+    const { rows } = await pool.query(
+      `SELECT * FROM categorias WHERE usuario_id = $1 ORDER BY nombre ASC`,
+      [usuario_id]
+    );
     return rows;
   },
 
-  // Obtener una categoría por ID
-  getById: async (id) => {
-    const { rows } = await pool.query(`SELECT * FROM categorias WHERE id = $1`, [id]);
+  getById: async (id, usuario_id) => {
+    const { rows } = await pool.query(
+      `SELECT * FROM categorias WHERE id = $1 AND usuario_id = $2`,
+      [id, usuario_id]
+    );
     return rows[0] || null;
   },
 
-  // Crear una nueva categoría
-  create: async ({ nombre }) => {
+  create: async ({ nombre, usuario_id }) => {
     const { rows } = await pool.query(
-      `INSERT INTO categorias (nombre) VALUES ($1) RETURNING *`,
-      [nombre]
+      `INSERT INTO categorias (nombre, usuario_id) VALUES ($1, $2) RETURNING *`,
+      [nombre, usuario_id]
     );
     return rows[0];
   },
 
-  // Actualizar nombre de una categoría
-  update: async (id, { nombre }) => {
+  update: async (id, { nombre }, usuario_id) => {
     const { rows } = await pool.query(
-      `UPDATE categorias SET nombre = $1 WHERE id = $2 RETURNING *`,
-      [nombre, id]
+      `UPDATE categorias SET nombre = $1 WHERE id = $2 AND usuario_id = $3 RETURNING *`,
+      [nombre, id, usuario_id]
     );
     return rows[0] || null;
   },
 
-  // Eliminar una categoría (hard delete — verificar que no tenga productos asociados antes)
-  delete: async (id) => {
+  delete: async (id, usuario_id) => {
     const { rows } = await pool.query(
-      `DELETE FROM categorias WHERE id = $1 RETURNING id`,
-      [id]
+      `DELETE FROM categorias WHERE id = $1 AND usuario_id = $2 RETURNING id`,
+      [id, usuario_id]
     );
     return rows[0] || null;
   },

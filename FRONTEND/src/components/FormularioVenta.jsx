@@ -71,7 +71,6 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
     e.preventDefault();
     const itemsValidos = items.filter(i => i.producto_id && i.cantidad > 0 && i.precio_unitario > 0);
     if (itemsValidos.length === 0) return;
-    console.log('DEBUG items antes de enviar:', JSON.stringify(itemsValidos)); // ← temporal
     onGuardar({
       tipo,
       observaciones: observaciones || null,

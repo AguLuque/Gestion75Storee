@@ -24,8 +24,12 @@ export default function Sidebar({ cerrar, cerrarMenu }) {
     <aside className="w-56 bg-white border-r border-slate-200 h-full flex flex-col">
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <img src="/Logo.png" alt="Logo" className="h-40 w-auto" />
+        <div className="flex items-center justify-center p-0">
+          <img
+            src="/Logo.png"
+            alt="FluxoGest"
+            className="h-30 w-auto object-contain"
+          />
         </div>
         {cerrar && (
           <button onClick={cerrar} className="text-slate-400 hover:text-slate-600 lg:hidden">
