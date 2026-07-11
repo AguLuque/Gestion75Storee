@@ -1,13 +1,28 @@
 import { useState } from 'react';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
 import { productosApi } from '../services/api.js';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+
+import { Button } from '../components/ui/button.jsx';
+import { Card } from '../components/ui/card.jsx';
+import { Input } from '../components/ui/input.jsx';
+import { Badge } from '../components/ui/badge.jsx';
 import {
-  Boton, Card, Modal, Badge,
-  Spinner, Tabla, ModalConfirmar
-} from '../components/ui/index.jsx';
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '../components/ui/select.jsx';
+import {
+  Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
+} from '../components/ui/table.jsx';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '../components/ui/dialog.jsx';
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from '../components/ui/alert-dialog.jsx';
+
 import { formatearPrecio } from '../utils.js';
 import FormularioProducto from '../components/FormularioProducto.jsx';
 
@@ -64,96 +79,139 @@ export default function Productos() {
     }
   }
 
-  if (cargando) return <Spinner />;
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Productos</h1>
-          <p className="text-sm text-slate-500">{productosFiltrados.length} productos</p>
+          <h1 className="text-xl font-bold text-foreground">Productos</h1>
+          <p className="text-sm text-muted-foreground">{productosFiltrados.length} productos</p>
         </div>
-        <Boton onClick={abrirCrear}>
+        <Button onClick={abrirCrear}>
           <Plus size={16} /> Nuevo
-        </Boton>
+        </Button>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
               placeholder="Buscar producto..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-9"
             />
           </div>
-          <select
-            value={filtroCategoria}
-            onChange={e => setFiltroCategoria(e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="">Todas las categorías</option>
-            {(Array.isArray(categorias) ? categorias : []).map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
+          <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
+            <SelectTrigger className="sm:w-56">
+              <SelectValue placeholder="Todas las categorías" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Array.isArray(categorias) ? categorias : []).map(c => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.nombre}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
       <Card className="p-5">
-        <Tabla
-          columnas={['Producto', 'Categoría', 'Stock', 'P. Compra', 'P. Minorista', 'P. Mayorista', 'Acciones']} datos={productosFiltrados}
-          vacio="No se encontraron productos"
-          renderFila={(p) => (
-            <>
-              <td className="py-3 pr-4 font-medium text-slate-800">{p.nombre}</td>
-              <td className="py-3 pr-4">
-                <Badge color="azul">{p.categoria_nombre || '—'}</Badge>
-              </td>
-              <td className="py-3 pr-4">
-                <Badge color={p.stock_actual === 0 ? 'rojo' : p.stock_actual <= 2 ? 'amarillo' : 'verde'}>
-                  <span className="whitespace-nowrap">{p.stock_actual} u.</span>
-                </Badge>
-              </td>
-              <td className="py-3 pr-4 text-slate-500 text-xs hidden sm:table-cell">{formatearPrecio(p.precio_compra)}</td>
-              <td className="py-3 pr-4 text-slate-700">{formatearPrecio(p.precio_minorista)}</td>
-              <td className="py-3 pr-4 text-slate-700 hidden sm:table-cell">{formatearPrecio(p.precio_mayorista)}</td>
-              <td className="py-3 flex items-center gap-1.5">
-                <Boton variante="fantasma" tamaño="sm" onClick={() => abrirEditar(p)}>
-                  <Pencil size={14} />
-                </Boton>
-                <Boton variante="peligro" tamaño="sm" onClick={() => setConfirmEliminar(p)}>
-                  <Trash2 size={14} />
-                </Boton>
-              </td>
-            </>
-          )}
-        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Producto</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead className="hidden sm:table-cell">P. Compra</TableHead>
+              <TableHead>P. Minorista</TableHead>
+              <TableHead className="hidden sm:table-cell">P. Mayorista</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {productosFiltrados.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  No se encontraron productos
+                </TableCell>
+              </TableRow>
+            ) : (
+              productosFiltrados.map(p => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-medium text-foreground">{p.nombre}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{p.categoria_nombre || '—'}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={p.stock_actual === 0 ? 'destructive' : p.stock_actual <= 2 ? 'outline' : 'secondary'}>
+                      <span className="whitespace-nowrap">{p.stock_actual} u.</span>
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs hidden sm:table-cell">
+                    {formatearPrecio(p.precio_compra)}
+                  </TableCell>
+                  <TableCell>{formatearPrecio(p.precio_minorista)}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{formatearPrecio(p.precio_mayorista)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button variant="ghost" size="icon-sm" onClick={() => abrirEditar(p)}>
+                        <Pencil size={14} />
+                      </Button>
+                      <Button variant="destructive" size="icon-sm" onClick={() => setConfirmEliminar(p)}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
-      <Modal
-        abierto={modalAbierto}
-        onCerrar={() => setModalAbierto(false)}
-        titulo={productoEditando ? 'Editar producto' : 'Nuevo producto'}
-      >
-        <FormularioProducto
-          productoInicial={productoEditando}
-          categorias={Array.isArray(categorias) ? categorias : []}
-          onGuardar={guardar}
-          guardando={guardando}
-          onCancelar={() => setModalAbierto(false)}
-        />
-      </Modal>
+      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{productoEditando ? 'Editar producto' : 'Nuevo producto'}</DialogTitle>
+          </DialogHeader>
+          <FormularioProducto
+            productoInicial={productoEditando}
+            categorias={Array.isArray(categorias) ? categorias : []}
+            onGuardar={guardar}
+            guardando={guardando}
+            onCancelar={() => setModalAbierto(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      <ModalConfirmar
-        abierto={!!confirmEliminar}
-        onCerrar={() => setConfirmEliminar(null)}
-        onConfirmar={eliminar}
-        mensaje={`¿Eliminar el producto "${confirmEliminar?.nombre}"? Esta acción desactivará el producto.`}
-        cargando={guardando}
-      />
+      <AlertDialog open={!!confirmEliminar} onOpenChange={(open) => !open && setConfirmEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar acción</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Eliminar el producto "{confirmEliminar?.nombre}"? Esta acción desactivará el producto.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={guardando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={eliminar}
+              disabled={guardando}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {guardando ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

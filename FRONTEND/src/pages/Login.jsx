@@ -31,11 +31,11 @@ export default function Login() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary-50 to-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
 
-            {/* Formas de fondo decorativas */}
-            <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary-200/40 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary-300/30 rounded-full blur-3xl" />
+            {/* Formas de fondo decorativas, muy sutiles */}
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary-100/40 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary-200/30 rounded-full blur-3xl" />
 
             <div className="w-full max-w-sm animate-fade-in relative z-10">
 
@@ -46,13 +46,13 @@ export default function Login() {
                         alt="Logo"
                         className="w-70 h-70 mx-auto object-contain animate-float"
                     />
-                    <p className="text-sm text-slate-500 -mt-8">Ordená hoy tu negocio para crecer mañana.</p>
+                    <p className="text-sm text-slate-500 -mt-10 font-medium">Ordená tu negocio para crecer mañana</p>
                 </div>
 
                 {/* Card */}
-                <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-xl shadow-primary-900/5 p-6">
-                    <h2 className="text-base font-semibold text-slate-700 mb-1 text-center">Iniciar sesión</h2>
-                    <p className="text-xs text-slate-400 text-center mb-5">Ingresá tus credenciales para continuar</p>
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_12px_35px_rgba(0,0,0,0.08)] p-6">
+                    <h2 className="text-lg font-bold text-slate-800 mb-1 text-center">Iniciar sesión</h2>
+                    <p className="text-sm text-slate-500 text-center mb-5">Ingresá tus credenciales para continuar</p>
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <Input
                             label="Gmail"
@@ -93,33 +93,16 @@ export default function Login() {
                             </div>
                         )}
 
-                        <Boton type="submit" disabled={cargando} className="w-full justify-center mt-1 py-2.5">
+                        <Boton type="submit" disabled={cargando} className="w-full justify-center mt-1 py-3.5">
                             <LogIn size={16} />
                             {cargando ? 'Ingresando...' : 'Ingresar'}
                         </Boton>
                     </form>
 
-                    <div className="flex items-center gap-3 my-5">
-                        <div className="h-px flex-1 bg-slate-200" />
-                        <span className="text-xs text-slate-400">FluxoGest</span>
-                        <div className="h-px flex-1 bg-slate-200" />
-                    </div>
-
-                    <p className="text-center text-xs text-slate-400">
-                        ¿Problemas para ingresar?{" "}
-                        <a
-                            href="https://mail.google.com/mail/u/0/?fs=1&to=agustinluque.lbz@gmail.com&su=Soporte%20FluxoGest&body=Hola,%20necesito%20ayuda%20con%20FluxoGest.%0A%0ADescribo%20mi%20problema:%20&tf=cm" target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-400 underline"
-                        >
-                            Contactate con soporte.
-                        </a>
+                    <p className="text-center text-sm text-slate-500 mt-4 font-medium">
+                        Gestión inteligente para emprendedores
                     </p>
                 </div>
-
-                <p className="text-center text-xs text-slate-400 mt-6">
-                    Sistema privado · Solo personal autorizado
-                </p>
             </div>
         </div>
     );

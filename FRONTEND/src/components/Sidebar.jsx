@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, TrendingUp,
-  Tag, Truck, DollarSign, Users, X, LogOut
+  Tag, Truck, DollarSign, Users, X, LogOut, BarChart3
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { cn } from '../utils.js';
+import { cn } from '../lib/utils.js';
 
 const items = [
   { a: '/', icono: LayoutDashboard, etiqueta: 'Principal' },
@@ -15,30 +15,25 @@ const items = [
   { a: '/categorias', icono: Tag, etiqueta: 'Categorías' },
   { a: '/proveedores', icono: Truck, etiqueta: 'Proveedores' },
   { a: '/deudores', icono: Users, etiqueta: 'Deudores' },
+  { a: '/estadisticas', icono: BarChart3, etiqueta: 'Estadísticas' },
 ];
 
 export default function Sidebar({ cerrar, cerrarMenu }) {
   const { cerrarSesion } = useAuth();
 
   return (
-    <aside className="w-56 bg-white border-r border-slate-200 h-full flex flex-col">
-      {/* Logo */}
-      <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
+    <aside className="w-56 bg-card border-r border-border h-full flex flex-col">
+      <div className="flex items-center justify-between px-5 py-5 border-b border-border">
         <div className="flex items-center justify-center p-0">
-          <img
-            src="/Logo.png"
-            alt="FluxoGest"
-            className="h-30 w-auto object-contain"
-          />
+          <img src="/Logo.png" alt="FluxoGest" className="h-30 w-auto object-contain" />
         </div>
         {cerrar && (
-          <button onClick={cerrar} className="text-slate-400 hover:text-slate-600 lg:hidden">
+          <button onClick={cerrar} className="text-muted-foreground hover:text-foreground lg:hidden">
             <X size={18} />
           </button>
         )}
       </div>
 
-      {/* Navegación */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {items.map(({ a, icono: Icono, etiqueta }) => (
           <NavLink
@@ -50,8 +45,8 @@ export default function Sidebar({ cerrar, cerrarMenu }) {
               cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )
             }
           >
@@ -61,11 +56,10 @@ export default function Sidebar({ cerrar, cerrarMenu }) {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t border-slate-100">
+      <div className="px-3 py-4 border-t border-border">
         <button
           onClick={cerrarSesion}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all w-full"
         >
           <LogOut size={16} />
           Cerrar sesión

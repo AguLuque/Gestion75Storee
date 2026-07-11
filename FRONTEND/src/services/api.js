@@ -102,3 +102,10 @@ export const deudoresApi = {
   actualizar: (id, datos) => peticion(`/deudores/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
   eliminar: (id) => peticion(`/deudores/${id}`, { method: 'DELETE' }),
 };
+
+// Estadísticas
+export const estadisticasApi = {
+  resumenMensual: (meses = 6) => peticion(`/estadisticas/resumen-mensual?meses=${meses}`),
+  resumenPeriodo: (desde, hasta) => peticion(`/estadisticas/resumen?desde=${desde}&hasta=${hasta}`),
+  topProductos: (desde, hasta, limite = 6) => peticion(`/estadisticas/top-productos?desde=${desde}&hasta=${hasta}&limite=${limite}`),
+};

@@ -7,6 +7,7 @@ import ventaRoutes from "./venta.routes.js";
 import gastoRoutes from "./gasto.routes.js";
 import varianteRoutes from "./variante.routes.js";
 import deudorRoutes from "./deudor.routes.js";
+import estadisticaRoutes from "./estadistica.routes.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -22,5 +23,5 @@ router.use("/gastos", gastoRoutes);
 router.use("/variantes", varianteRoutes);
 router.use("/productos/:producto_id/variantes", varianteRoutes);
 router.use("/deudores", deudorRoutes);
-
+router.use("/estadisticas", estadisticaRoutes);
 export default router;

@@ -13,6 +13,7 @@ import Gastos from './pages/Gastos.jsx';
 import Categorias from './pages/Categorias.jsx';
 import Proveedores from './pages/Proveedores.jsx';
 import Deudores from './pages/Deudores.jsx';
+import Estadisticas from './pages/Estadisticas.jsx';
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="categorias" element={<Categorias />} />
               <Route path="proveedores" element={<Proveedores />} />
               <Route path="deudores" element={<Deudores />} />
+              <Route path="estadisticas" element={<Estadisticas />} />
             </Route>
           </Routes>
         </ToastProvider>
