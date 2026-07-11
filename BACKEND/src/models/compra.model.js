@@ -67,6 +67,23 @@ const CompraModel = {
     );
     return rows[0];
   },
+
+  insertItem: async (client, { compra_id, producto_id, cantidad, precio_unitario }) => {
+    const subtotal = cantidad * precio_unitario;
+    const { rows } = await client.query(
+      `INSERT INTO compra_items (compra_id, producto_id, cantidad, precio_unitario, subtotal)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [compra_id, producto_id, cantidad, precio_unitario, subtotal]
+    );
+    return rows[0];
+  },
+
+  deleteItems: async (client, compra_id) => {
+    await client.query(`DELETE FROM compra_items WHERE compra_id = $1`, [compra_id]);
+  },
+
+  getClient: () => pool.connect(),
+  
 };
 
 export default CompraModel;

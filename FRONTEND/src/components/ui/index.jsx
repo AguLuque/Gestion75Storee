@@ -1,6 +1,7 @@
 import { cn } from '../../utils.js';
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 // --- Botón ---
 export function Boton({ children, variante = 'primario', tamaño = 'md', className, ...props }) {
@@ -108,11 +109,10 @@ export function Card({ children, className, ...props }) {
   );
 }
 
-// --- Modal ---
 export function Modal({ abierto, onCerrar, titulo, children, className }) {
   if (!abierto) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCerrar} />
       <div className={cn('relative bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in', className || 'max-w-lg mx-4')}>
@@ -124,7 +124,8 @@ export function Modal({ abierto, onCerrar, titulo, children, className }) {
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
