@@ -41,7 +41,7 @@ export default function Layout() {
               <FiltroPeriodoGlobal />
             </div>
           </div>
-          <div className="lg:hidden px-4 pb-3 overflow-x-auto">
+          <div className="lg:hidden px-4 pb-3">
             <FiltroPeriodoGlobal />
           </div>
         </div>

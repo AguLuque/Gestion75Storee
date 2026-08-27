@@ -8,7 +8,7 @@ const VentaModel = {
   // Obtener todas las ventas con sus ítems
   getAll: async (usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago, v.canal, v.comision,
       json_agg(json_build_object(
         'producto_id', vi.producto_id,
         'producto', p.nombre,
@@ -30,7 +30,7 @@ const VentaModel = {
   // Obtener una venta por ID con sus ítems
   getById: async (id, usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago, v.canal, v.comision,
       json_agg(json_build_object(
         'producto_id', vi.producto_id,
         'producto', p.nombre,
@@ -51,7 +51,7 @@ const VentaModel = {
   // Obtener ventas filtradas por rango de fechas
   getByPeriodo: async (desde, hasta, usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.metodo_pago,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.metodo_pago, v.canal, v.comision,
       json_agg(json_build_object(
         'producto', p.nombre,
         'cantidad', vi.cantidad,
@@ -70,11 +70,11 @@ const VentaModel = {
   },
 
   // Insertar cabecera de venta (dentro de una transacción)
-  insertCabecera: async (client, { tipo, total, ganancia, observaciones, metodo_pago, usuario_id }) => {
+  insertCabecera: async (client, { tipo, total, ganancia, observaciones, metodo_pago, canal, comision, usuario_id }) => {
     const { rows } = await client.query(
-      `INSERT INTO ventas (tipo, total, ganancia, observaciones, metodo_pago, usuario_id)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [tipo, total, ganancia, observaciones ?? null, metodo_pago ?? null, usuario_id]
+      `INSERT INTO ventas (tipo, total, ganancia, observaciones, metodo_pago, canal, comision, usuario_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [tipo, total, ganancia, observaciones ?? null, metodo_pago ?? null, canal || "directa", comision ?? 0, usuario_id]
     );
     return rows[0];
   },

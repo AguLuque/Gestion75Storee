@@ -3,7 +3,8 @@ import pool from "../config/db.js";
 const DeudorModel = {
   getAll: async (usuario_id) => {
     const { rows } = await pool.query(
-      `SELECT * FROM deudores WHERE activo = true AND usuario_id = $1 ORDER BY plazo ASC NULLS LAST`,
+      `SELECT * FROM deudores WHERE activo = true AND usuario_id = $1
+       ORDER BY pagado ASC, plazo ASC NULLS LAST`,
       [usuario_id]
     );
     return rows;
@@ -31,6 +32,17 @@ const DeudorModel = {
     const { rows } = await pool.query(
       `UPDATE deudores SET activo=false WHERE id=$1 AND activo=true AND usuario_id=$2 RETURNING id`,
       [id, usuario_id]
+    );
+    return rows[0] || null;
+  },
+
+  marcarPagado: async (id, pagado, usuario_id) => {
+    const { rows } = await pool.query(
+      `UPDATE deudores
+       SET pagado = $1, fecha_pago = CASE WHEN $1 THEN now() ELSE NULL END
+       WHERE id = $2 AND activo = true AND usuario_id = $3
+       RETURNING *`,
+      [pagado, id, usuario_id]
     );
     return rows[0] || null;
   },

@@ -4,9 +4,25 @@ import { useAccion } from '../hooks/useDatos.js';
 import { comprasApi, productosApi, proveedoresApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { Boton, Card, Modal, Spinner, Drawer, DetalleCampo, CardMobile } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Spinner, Drawer, DetalleCampo, CardMobile, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioCompra from '../components/FormularioCompra.jsx';
+
+const COLOR_TIPO = { local: 'default', nacional: 'azul', internacional: 'violeta' };
+const ETIQUETA_TIPO = { local: 'Local', nacional: 'Nacional', internacional: 'Internacional' };
+
+// Reparte el costo de envío entre los ítems, proporcional a su valor,
+// solo como referencia — no modifica el precio_compra real del producto.
+function itemsConCostoEstimado(compra) {
+  const totalItems = (compra.items || []).reduce((s, i) => s + Number(i.subtotal || 0), 0);
+  const envio = Number(compra.costo_envio || 0);
+  return (compra.items || []).map(item => {
+    if (!envio || !totalItems) return { ...item, costoUnitarioConEnvio: null };
+    const envioItem = envio * (Number(item.subtotal || 0) / totalItems);
+    const costoUnitarioConEnvio = Number(item.precio_unitario || 0) + envioItem / Number(item.cantidad || 1);
+    return { ...item, costoUnitarioConEnvio };
+  });
+}
 
 export default function Compras() {
   const { comprasFiltradas: compras, productos, proveedores, cargando, recargar, esMesFuturo } = useDatosGlobal();
@@ -75,12 +91,17 @@ export default function Compras() {
                 className="flex-1 cursor-pointer"
                 onClick={() => setExpandida(expandida === compra.id ? null : compra.id)}
               >
-                <p className="text-sm font-medium text-slate-800">{formatearPrecio(compra.total)}</p>
+                <p className="text-sm font-medium text-slate-800">
+                  {formatearPrecio(Number(compra.total) + Number(compra.costo_envio || 0))}
+                </p>
                 <p className="text-xs text-slate-400">
                   {formatearFecha(compra.fecha)} · {compra.proveedor || 'Sin proveedor'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {compra.tipo && compra.tipo !== 'local' && (
+                  <Badge color={COLOR_TIPO[compra.tipo]}>{ETIQUETA_TIPO[compra.tipo]}</Badge>
+                )}
                 <Boton variante="fantasma" tamaño="sm" onClick={() => abrirEditar(compra)}>
                   <Pencil size={14} />
                 </Boton>
@@ -96,12 +117,21 @@ export default function Compras() {
             {expandida === compra.id && compra.items && (
               <div className="pb-3 pl-2">
                 <div className="bg-slate-50 rounded-lg p-3 space-y-1.5">
-                  {compra.items.map((item, i) => (
-                    <div key={i} className="flex justify-between text-xs">
+                  {itemsConCostoEstimado(compra).map((item, i) => (
+                    <div key={i} className="flex justify-between items-baseline text-xs">
                       <span className="text-slate-600">{item.producto} × {item.cantidad}</span>
-                      <span className="text-slate-700 font-medium">{formatearPrecio(item.subtotal)}</span>
+                      <span className="text-right">
+                        <span className="text-slate-700 font-medium">{formatearPrecio(item.subtotal)}</span>
+                        {item.costoUnitarioConEnvio != null && (
+                          <span className="block text-slate-400">≈ {formatearPrecio(item.costoUnitarioConEnvio)} c/u con envío</span>
+                        )}
+                      </span>
                     </div>
                   ))}
+                  <div className="flex justify-between text-xs pt-1 border-t border-slate-200 mt-1">
+                    <span className="text-slate-500">Costo de envío</span>
+                    <span className="text-slate-700 font-medium">{formatearPrecio(compra.costo_envio || 0)}</span>
+                  </div>
                   {compra.observaciones && (
                     <p className="text-xs text-slate-400 pt-1 border-t border-slate-200 mt-1">
                       {compra.observaciones}
@@ -120,10 +150,17 @@ export default function Compras() {
           ) : (
             (Array.isArray(compras) ? compras : []).map(compra => (
               <CardMobile key={compra.id} onClick={() => setDetalleMobile(compra)}>
-                <p className="text-sm font-medium text-slate-800">{formatearPrecio(compra.total)}</p>
-                <p className="text-xs text-slate-400">
-                  {formatearFecha(compra.fecha)} · {compra.proveedor || 'Sin proveedor'}
+                <p className="text-sm font-medium text-slate-800">
+                  {formatearPrecio(Number(compra.total) + Number(compra.costo_envio || 0))}
                 </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {compra.tipo && compra.tipo !== 'local' && (
+                    <Badge color={COLOR_TIPO[compra.tipo]}>{ETIQUETA_TIPO[compra.tipo]}</Badge>
+                  )}
+                  <span className="text-xs text-slate-400">
+                    {formatearFecha(compra.fecha)} · {compra.proveedor || 'Sin proveedor'}
+                  </span>
+                </div>
               </CardMobile>
             ))
           )}
@@ -161,14 +198,22 @@ export default function Compras() {
           <div>
             <DetalleCampo etiqueta="Fecha" valor={formatearFecha(detalleMobile.fecha)} />
             <DetalleCampo etiqueta="Proveedor" valor={detalleMobile.proveedor || 'Sin proveedor'} />
+            <DetalleCampo etiqueta="Tipo" valor={ETIQUETA_TIPO[detalleMobile.tipo] || 'Local'} />
+            <DetalleCampo etiqueta="Mercadería" valor={formatearPrecio(detalleMobile.total)} />
+            <DetalleCampo etiqueta="Costo de envío" valor={formatearPrecio(detalleMobile.costo_envio || 0)} />
             {detalleMobile.items?.length > 0 && (
               <div className="pt-2">
                 <p className="text-xs font-medium text-slate-500 mb-1.5">Productos</p>
                 <div className="bg-slate-50 rounded-lg p-3 space-y-1.5">
-                  {detalleMobile.items.map((item, i) => (
-                    <div key={i} className="flex justify-between text-xs">
+                  {itemsConCostoEstimado(detalleMobile).map((item, i) => (
+                    <div key={i} className="flex justify-between items-baseline text-xs">
                       <span className="text-slate-600">{item.producto} × {item.cantidad}</span>
-                      <span className="text-slate-700 font-medium">{formatearPrecio(item.subtotal)}</span>
+                      <span className="text-right">
+                        <span className="text-slate-700 font-medium">{formatearPrecio(item.subtotal)}</span>
+                        {item.costoUnitarioConEnvio != null && (
+                          <span className="block text-slate-400">≈ {formatearPrecio(item.costoUnitarioConEnvio)} c/u con envío</span>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>

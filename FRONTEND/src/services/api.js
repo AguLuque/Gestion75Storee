@@ -101,4 +101,5 @@ export const deudoresApi = {
   crear: (datos) => peticion('/deudores', { method: 'POST', body: JSON.stringify(datos) }),
   actualizar: (id, datos) => peticion(`/deudores/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
   eliminar: (id) => peticion(`/deudores/${id}`, { method: 'DELETE' }),
+  marcarPagado: (id, pagado) => peticion(`/deudores/${id}/pagado`, { method: 'PATCH', body: JSON.stringify({ pagado }) }),
 };

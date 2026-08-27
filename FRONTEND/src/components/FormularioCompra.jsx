@@ -8,10 +8,18 @@ import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
 
+const TIPOS_COMPRA = [
+  { valor: 'local', etiqueta: 'Local' },
+  { valor: 'nacional', etiqueta: 'Nacional' },
+  { valor: 'internacional', etiqueta: 'Internacional' },
+];
+
 export default function FormularioCompra({ compraInicial, productos, proveedores, onGuardar, guardando, onCancelar, onProductoCreado }) {
   const [proveedorId, setProveedorId] = useState('');
   const [items, setItems] = useState([itemVacio()]);
   const [observaciones, setObservaciones] = useState('');
+  const [tipo, setTipo] = useState('local');
+  const [costoEnvio, setCostoEnvio] = useState('');
   const [modalNuevoProducto, setModalNuevoProducto] = useState(false);
   const [nuevoProducto, setNuevoProducto] = useState({ nombre: '', categoria_id: '', precio_compra: '', precio_minorista: '', precio_mayorista: '' });
   const [categorias, setCategorias] = useState([]);
@@ -26,6 +34,8 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
     if (compraInicial) {
       setProveedorId(compraInicial.proveedor_id || '');
       setObservaciones(compraInicial.observaciones || '');
+      setTipo(compraInicial.tipo || 'local');
+      setCostoEnvio(compraInicial.costo_envio || '');
       if (compraInicial.items?.length) {
         setItems(compraInicial.items.map(i => ({
           producto_id: String(i.producto_id),
@@ -36,6 +46,8 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
     } else {
       setProveedorId('');
       setObservaciones('');
+      setTipo('local');
+      setCostoEnvio('');
       setItems([itemVacio()]);
     }
   }, [compraInicial]);
@@ -59,7 +71,7 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
       categoria_id: nuevoProducto.categoria_id ? Number(nuevoProducto.categoria_id) : null,
       precio_compra: Number(nuevoProducto.precio_compra) || 0,
       precio_minorista: Number(nuevoProducto.precio_minorista) || 0,
-      precio_mayorista: Number(nuevoProducto.precio_mayorista) || 0,
+      precio_mayorista: nuevoProducto.precio_mayorista === '' ? null : Number(nuevoProducto.precio_mayorista),
       stock_actual: 0,
     }));
     if (resultado.ok) {
@@ -90,6 +102,8 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
     onGuardar({
       proveedor_id: proveedorId ? Number(proveedorId) : null,
       observaciones: observaciones || null,
+      tipo,
+      costo_envio: Number(costoEnvio) || 0,
       items: itemsValidos.map(i => ({
         producto_id: Number(i.producto_id),
         cantidad: Number(i.cantidad),
@@ -105,6 +119,22 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
           <option value="">Sin proveedor</option>
           {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </Select>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Tipo de compra" value={tipo} onChange={e => setTipo(e.target.value)}>
+            {TIPOS_COMPRA.map(t => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
+          </Select>
+
+          <InputPrecio
+            label="Costo de envío"
+            valorInicial={costoEnvio}
+            onCambio={valor => setCostoEnvio(valor || '')}
+            placeholder="0"
+          />
+        </div>
+        <p className="text-xs text-slate-400 -mt-2">
+          Incluye flete, correo, o nafta si tenés que ir a buscarlo (por ej. a otra ciudad por cargo).
+        </p>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -149,9 +179,23 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
 
         <Textarea label="Observaciones (opcional)" value={observaciones} onChange={e => setObservaciones(e.target.value)} placeholder="Notas..." />
 
-        <div className="bg-slate-50 rounded-lg p-3 flex justify-between items-center">
-          <span className="text-sm text-slate-600">Total</span>
-          <span className="font-bold text-slate-800">{formatearPrecio(total)}</span>
+        <div className="bg-slate-50 rounded-lg p-3 space-y-1">
+          {Number(costoEnvio) > 0 && (
+            <>
+              <div className="flex justify-between items-center text-sm text-slate-500">
+                <span>Mercadería</span>
+                <span>{formatearPrecio(total)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm text-slate-500">
+                <span>Envío</span>
+                <span>{formatearPrecio(Number(costoEnvio))}</span>
+              </div>
+            </>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-slate-600">Total</span>
+            <span className="font-bold text-slate-800">{formatearPrecio(total + (Number(costoEnvio) || 0))}</span>
+          </div>
         </div>
 
         <div className="flex gap-2 justify-end">
@@ -199,10 +243,10 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
               onCambio={valor =>
                 setNuevoProducto(p => ({
                   ...p,
-                  precio_mayorista: valor,
+                  precio_mayorista: valor || '',
                 }))
               }
-              placeholder="0"
+              placeholder="Opcional"
             />
           </div>
           <div className="flex gap-2 justify-end pt-1">

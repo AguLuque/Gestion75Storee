@@ -1,6 +1,5 @@
 import { cn } from '../../utils.js';
 import { X, ChevronRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Drawer as DrawerPrimitive } from 'vaul';
 
@@ -263,6 +262,10 @@ export function Drawer({ abierto, onCerrar, titulo, children, footer }) {
               <DrawerPrimitive.Title className="font-semibold text-slate-800">{titulo}</DrawerPrimitive.Title>
             </div>
           )}
+          {/* Accesibilidad: Radix exige una descripción asociada al panel (aunque sea oculta) */}
+          <DrawerPrimitive.Description className="sr-only">
+            Detalle{titulo ? ` de ${titulo}` : ''}
+          </DrawerPrimitive.Description>
           <div className="flex-1 overflow-y-auto px-5 pb-2">{children}</div>
           {footer && <div className="flex gap-2 justify-end p-5 pt-3 border-t border-slate-100">{footer}</div>}
         </DrawerPrimitive.Content>
@@ -295,49 +298,21 @@ export function CardMobile({ children, onClick }) {
   );
 }
 
-// --- Hook para formatear precios mientras se escribe ---
-export function usePrecio(valorInicial = '') {
-  const [display, setDisplay] = useState(
-    valorInicial ? Number(valorInicial).toLocaleString('es-AR') : ''
-  );
-
-  // Cuando cambia el valor inicial (al editar un producto existente)
-  useEffect(() => {
-    const valorActualEnPantalla = Number(display.replace(/\./g, '').replace(/,/g, '')) || 0;
-    const valorEntrante = Number(valorInicial) || 0;
-
-    // Si el valor que llega es el mismo que ya tenemos mostrado, es el "eco"
-    // de lo que el usuario acaba de tipear (vino y volvió). No lo tocamos.
-    if (valorEntrante === valorActualEnPantalla) return;
-
-    setDisplay(
-      valorInicial !== '' && valorInicial !== undefined
-        ? Number(valorInicial).toLocaleString('es-AR')
-        : ''
-    );
-  }, [valorInicial]);
-
+// --- Input de precio con formato automático ---
+// Totalmente controlado por el padre (valorInicial + onCambio): no guarda una copia
+// propia del número, así lo que se ve en pantalla nunca puede desincronizarse de lo
+// que realmente se envía al backend (antes esto pasaba bajo tipeo rápido: el padre
+// y el estado interno del input podían quedar con valores distintos).
+export function InputPrecio({ label, valorInicial = '', onCambio, required, placeholder = '0', className }) {
   function onChange(e) {
-    // Sacar todo lo que no sea número
     const soloNumeros = e.target.value.replace(/\D/g, '');
-    // Formatear con puntos de miles
-    const formateado = soloNumeros ? Number(soloNumeros).toLocaleString('es-AR') : '';
-    setDisplay(formateado);
+    onCambio?.(soloNumeros ? Number(soloNumeros) : '');
   }
 
-  // Valor numérico real para enviar al backend
-  const valorNumerico = Number(display.replace(/\./g, '').replace(/,/g, '')) || 0;
-
-  return { display, onChange, valorNumerico };
-}
-
-// --- Input de precio con formato automático ---
-export function InputPrecio({ label, valorInicial = '', onCambio, required, placeholder = '0', className }) {
-  const { display, onChange, valorNumerico } = usePrecio(valorInicial);
-
-  useEffect(() => {
-    onCambio?.(valorNumerico);
-  }, [valorNumerico]);
+  const display =
+    valorInicial !== '' && valorInicial !== undefined && valorInicial !== null
+      ? Number(valorInicial).toLocaleString('es-AR')
+      : '';
 
   return (
     <div className="flex flex-col gap-1">

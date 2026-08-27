@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../utils.js';
 
 const MESES = [
@@ -17,7 +17,10 @@ const OPCIONES = [
 ];
 
 export default function FiltroPeriodoGlobal() {
-  const { periodo, setPeriodo, mesSeleccionado, setMesSeleccionado } = useDatosGlobal();
+  const {
+    periodo, setPeriodo, mesSeleccionado, setMesSeleccionado,
+    añoSeleccionado, setAñoSeleccionado,
+  } = useDatosGlobal();
   const [mostrarMeses, setMostrarMeses] = useState(false);
   const ref = useRef(null);
 
@@ -38,7 +41,10 @@ export default function FiltroPeriodoGlobal() {
     setMostrarMeses(false);
   }
 
-  const etiquetaMes = periodo === 'mes' ? MESES[mesSeleccionado] : 'Mes';
+  const esAñoActual = añoSeleccionado === new Date().getFullYear();
+  const etiquetaMes = periodo === 'mes'
+    ? `${MESES[mesSeleccionado]}${esAñoActual ? '' : ` ${añoSeleccionado}`}`
+    : 'Mes';
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -67,9 +73,25 @@ export default function FiltroPeriodoGlobal() {
             {/* Dropdown de meses */}
             {mostrarMeses && (
               <div className="absolute top-full mt-1 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-2 w-44 animate-fade-in">
-                <p className="text-xs text-slate-400 px-2 pb-2 border-b border-slate-100 mb-1">
-                  Seleccioná un mes
-                </p>
+                <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100 mb-1">
+                  <button
+                    type="button"
+                    onClick={() => setAñoSeleccionado(a => a - 1)}
+                    className="p-1 rounded hover:bg-slate-100 text-slate-500"
+                    aria-label="Año anterior"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs font-medium text-slate-600">{añoSeleccionado}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAñoSeleccionado(a => a + 1)}
+                    className="p-1 rounded hover:bg-slate-100 text-slate-500"
+                    aria-label="Año siguiente"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-1 pt-1">
                   {MESES.map((mes, idx) => (
                     <button

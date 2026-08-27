@@ -13,6 +13,7 @@ import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
+const CANALES_VALIDOS = ["directa", "mercadolibre"];
 
 /**
  * Crea una venta completa con múltiples productos en una sola transacción.
@@ -20,11 +21,13 @@ const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
  *   tipo: 'minorista'|'mayorista',
  *   observaciones,
  *   metodo_pago: 'efectivo'|'transferencia'|'tarjeta'|'otro'|undefined,
+ *   canal: 'directa'|'mercadolibre'|undefined,
+ *   comision: número (ej. comisión de MercadoLibre) descontado de la ganancia|undefined,
  *   items: [{ producto_id, cantidad, variante_id? }]
  * }
  * @returns {Object} - La venta creada con sus ítems y ganancia
  */
-const crearVenta = async ({ tipo, observaciones, metodo_pago, items, usuario_id }) => {
+const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, items, usuario_id }) => {
   // Validaciones básicas
   if (!tipo || !["minorista", "mayorista"].includes(tipo)) {
     throw { status: 400, message: "El tipo de venta debe ser 'minorista' o 'mayorista'." };
@@ -32,6 +35,14 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, items, usuario_id 
 
   if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
     throw { status: 400, message: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` };
+  }
+
+  if (canal && !CANALES_VALIDOS.includes(canal)) {
+    throw { status: 400, message: `canal debe ser uno de: ${CANALES_VALIDOS.join(", ")}.` };
+  }
+
+  if (comision !== undefined && comision !== null && Number(comision) < 0) {
+    throw { status: 400, message: "La comisión no puede ser negativa." };
   }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -70,7 +81,7 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, items, usuario_id 
         const precioBase =
           tipo === "mayorista" ? variante.precio_mayorista : variante.precio_minorista;
 
-        const precioDefault = precioBase + (variante.precio_extra ?? 0);
+        const precioDefault = precioBase != null ? precioBase + (variante.precio_extra ?? 0) : null;
 
         precio_unitario =
           item.precio_unitario !== undefined && item.precio_unitario !== null
@@ -112,6 +123,13 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, items, usuario_id 
         costo_unitario = producto.precio_compra;
       }
 
+      if (precio_unitario === null || precio_unitario === undefined || Number.isNaN(precio_unitario) || precio_unitario <= 0) {
+        throw {
+          status: 400,
+          message: `Falta el precio para el producto ${item.producto_id}${tipo === "mayorista" ? " (no tiene precio mayorista cargado, hay que indicarlo a mano)" : ""}.`,
+        };
+      }
+
       const subtotal = item.cantidad * precio_unitario;
       const ganancia_item = item.cantidad * (precio_unitario - costo_unitario);
 
@@ -127,13 +145,19 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, items, usuario_id 
       });
     }
 
+    // Descuenta la comisión del canal (ej. MercadoLibre) de la ganancia total
+    const comisionNumerica = Number(comision) || 0;
+    const gananciaNeta = ganancia - comisionNumerica;
+
     // Insertar cabecera de venta
     const venta = await VentaModel.insertCabecera(client, {
       tipo,
       total,
-      ganancia,
+      ganancia: gananciaNeta,
       observaciones,
       metodo_pago,
+      canal,
+      comision: comisionNumerica,
       usuario_id,
     });
 

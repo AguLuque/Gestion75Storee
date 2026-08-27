@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { Boton, Input, Select, Textarea } from './ui/index.jsx';
+import { Boton, Select, Textarea } from './ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
 import { InputPrecio } from './ui/index.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
 
@@ -11,21 +12,23 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
   const [items, setItems] = useState([itemVacio()]);
   const [observaciones, setObservaciones] = useState('');
   const [metodoPago, setMetodoPago] = useState('efectivo');
+  const [canal, setCanal] = useState('directa');
+  const [comision, setComision] = useState('');
+  const { mostrarToast } = useToast();
 
   function actualizarItem(idx, campo, valor) {
     setItems(prev => {
       const copia = [...prev];
       copia[idx] = { ...copia[idx], [campo]: valor };
 
-      // Auto-rellenar precio según tipo de venta
+      // Auto-rellenar precio según tipo de venta (si el producto no tiene
+      // precio mayorista cargado, queda en blanco para cargarlo a mano)
       if (campo === 'producto_id' && valor) {
         const prod = productos.find(p => String(p.id) === valor);
 
         if (prod) {
-          copia[idx].precio_unitario =
-            tipo === 'mayorista'
-              ? prod.precio_mayorista
-              : prod.precio_minorista;
+          const precioBase = tipo === 'mayorista' ? prod.precio_mayorista : prod.precio_minorista;
+          copia[idx].precio_unitario = precioBase ?? '';
         }
       }
       return copia;
@@ -43,13 +46,8 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
 
         if (!prod) return item;
 
-        return {
-          ...item,
-          precio_unitario:
-            nuevoTipo === 'mayorista'
-              ? prod.precio_mayorista
-              : prod.precio_minorista,
-        };
+        const precioBase = nuevoTipo === 'mayorista' ? prod.precio_mayorista : prod.precio_minorista;
+        return { ...item, precio_unitario: precioBase ?? '' };
       })
     );
   }
@@ -70,13 +68,22 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
 
   function enviar(e) {
     e.preventDefault();
-    const itemsValidos = items.filter(i => i.producto_id && i.cantidad > 0 && i.precio_unitario > 0);
-    if (itemsValidos.length === 0) return;
+    const itemsConProducto = items.filter(i => i.producto_id);
+    if (itemsConProducto.length === 0) return;
+
+    const incompleto = itemsConProducto.find(i => !(Number(i.cantidad) > 0) || !(Number(i.precio_unitario) > 0));
+    if (incompleto) {
+      mostrarToast('Completá la cantidad y el precio de todos los productos antes de guardar.', 'error');
+      return;
+    }
+
     onGuardar({
       tipo,
       observaciones: observaciones || null,
       metodo_pago: metodoPago,
-      items: itemsValidos.map(i => ({
+      canal,
+      comision: canal === 'mercadolibre' ? Number(comision) || 0 : 0,
+      items: itemsConProducto.map(i => ({
         producto_id: Number(i.producto_id),
         cantidad: Number(i.cantidad),
         precio_unitario: Number(i.precio_unitario),
@@ -106,6 +113,26 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
           <option value="tarjeta">Tarjeta</option>
           <option value="otro">Otro</option>
         </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Select
+          label="Canal de venta"
+          value={canal}
+          onChange={e => setCanal(e.target.value)}
+        >
+          <option value="directa">Directa</option>
+          <option value="mercadolibre">MercadoLibre</option>
+        </Select>
+
+        {canal === 'mercadolibre' && (
+          <InputPrecio
+            label="Comisión de ML"
+            valorInicial={comision}
+            onCambio={valor => setComision(valor || '')}
+            placeholder="0"
+          />
+        )}
       </div>
 
       {/* Items */}

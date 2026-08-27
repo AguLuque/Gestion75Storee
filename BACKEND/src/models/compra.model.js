@@ -9,7 +9,7 @@ const CompraModel = {
   // Listar todas las compras con sus ítems agrupados
   getAll: async (usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT c.id, c.fecha, c.total, c.observaciones,
+    SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio,
       p.nombre AS proveedor,
       json_agg(json_build_object(
         'producto_id', ci.producto_id,
@@ -31,7 +31,7 @@ const CompraModel = {
 
   getById: async (id, usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT c.id, c.fecha, c.total, c.observaciones,
+    SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio,
       p.nombre AS proveedor,
       json_agg(json_build_object(
         'producto_id', ci.producto_id,
@@ -50,20 +50,20 @@ const CompraModel = {
     return rows[0] || null;
   },
 
-  insertCabecera: async (client, { proveedor_id, total, observaciones, usuario_id }) => {
+  insertCabecera: async (client, { proveedor_id, total, observaciones, tipo, costo_envio, usuario_id }) => {
     const { rows } = await client.query(
-      `INSERT INTO compras (proveedor_id, total, observaciones, usuario_id)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-      [proveedor_id ?? null, total, observaciones ?? null, usuario_id]
+      `INSERT INTO compras (proveedor_id, total, observaciones, tipo, costo_envio, usuario_id)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, usuario_id]
     );
     return rows[0];
   },
 
-  updateCabecera: async (client, id, { proveedor_id, total, observaciones }, usuario_id) => {
+  updateCabecera: async (client, id, { proveedor_id, total, observaciones, tipo, costo_envio }, usuario_id) => {
     const { rows } = await client.query(
-      `UPDATE compras SET proveedor_id=$1, total=$2, observaciones=$3
-     WHERE id=$4 AND usuario_id=$5 RETURNING *`,
-      [proveedor_id ?? null, total, observaciones ?? null, id, usuario_id]
+      `UPDATE compras SET proveedor_id=$1, total=$2, observaciones=$3, tipo=$4, costo_envio=$5
+     WHERE id=$6 AND usuario_id=$7 RETURNING *`,
+      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, id, usuario_id]
     );
     return rows[0];
   },

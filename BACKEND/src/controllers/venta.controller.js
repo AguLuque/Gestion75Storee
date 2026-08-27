@@ -33,8 +33,8 @@ const VentaController = {
   // Body esperado: { tipo: 'minorista'|'mayorista', observaciones?, items: [{ producto_id, cantidad }] }
   create: async (req, res, next) => {
     try {
-      const { tipo, observaciones, metodo_pago, items } = req.body;
-      const venta = await VentaService.crearVenta({ tipo, observaciones, metodo_pago, items, usuario_id: req.usuario_id });
+      const { tipo, observaciones, metodo_pago, canal, comision, items } = req.body;
+      const venta = await VentaService.crearVenta({ tipo, observaciones, metodo_pago, canal, comision, items, usuario_id: req.usuario_id });
       res.status(201).json({ success: true, data: venta });
     } catch (err) { next(err); }
   },

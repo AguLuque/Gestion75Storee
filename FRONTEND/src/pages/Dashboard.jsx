@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3, Trophy } from 'lucide-react';
+import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3 } from 'lucide-react';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
@@ -24,11 +24,11 @@ export default function Dashboard() {
   const listaDeudores = Array.isArray(deudores) ? deudores : [];
   const stats = useMemo(() => {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
-    const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0), 0);
+    const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0) + Number(c.costo_envio || 0), 0);
     const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
     const gananciaBruta = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0);
     const gananciaNeta = gananciaBruta - totalGastos;
-    const totalDeudasPorCobrar = listaDeudores.reduce((s, d) => s + Number(d.monto || 0), 0);
+    const totalDeudasPorCobrar = listaDeudores.filter(d => !d.pagado).reduce((s, d) => s + Number(d.monto || 0), 0);
     return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalDeudasPorCobrar };
   }, [listaVentas, listaCompras, listaGastos, listaDeudores]);
 

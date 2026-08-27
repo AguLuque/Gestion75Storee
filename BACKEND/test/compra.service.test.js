@@ -135,3 +135,40 @@ test("editar una compra valida los ítems igual que al crearla", async () => {
     (err) => err.status === 400
   );
 });
+
+test("una compra internacional guarda tipo y costo de envío", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, tipo: "internacional", costo_envio: 15000,
+    items: [{ producto_id: p.id, cantidad: 3, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  assert.equal(compra.tipo, "internacional");
+  assert.equal(Number(compra.costo_envio), 15000);
+  assert.equal(Number(compra.total), 120, "el total de mercadería no debe incluir el envío");
+});
+
+test("un tipo de compra inválido es rechazado", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  await assert.rejects(
+    () => CompraService.crearCompra({
+      proveedor_id: null, tipo: "por avion", items: [{ producto_id: p.id, cantidad: 1, precio_unitario: 10 }], usuario_id: REAL_UID,
+    }),
+    (err) => err.status === 400
+  );
+});
+
+test("una compra sin tipo especificado queda como local por defecto", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, items: [{ producto_id: p.id, cantidad: 1, precio_unitario: 10 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  assert.equal(compra.tipo, "local");
+  assert.equal(Number(compra.costo_envio), 0);
+});

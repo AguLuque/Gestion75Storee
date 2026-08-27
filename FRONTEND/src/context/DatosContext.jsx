@@ -3,8 +3,7 @@ import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedo
 
 const DatosContext = createContext(null);
 
-// Agregá mesSeleccionado como tercer parámetro
-function aplicarFiltro(lista, periodo, campo = 'fecha', mesSeleccionado) {
+function aplicarFiltro(lista, periodo, campo = 'fecha', mesSeleccionado, añoSeleccionado) {
   if (periodo === 'todo') return lista;
   const ahora = new Date();
   return lista.filter(item => {
@@ -21,7 +20,7 @@ function aplicarFiltro(lista, periodo, campo = 'fecha', mesSeleccionado) {
       }
       case 'mes':
         return fecha.getMonth() === mesSeleccionado &&
-          fecha.getFullYear() === new Date().getFullYear();
+          fecha.getFullYear() === añoSeleccionado;
       case 'año':
         return fecha.getFullYear() === ahora.getFullYear();
       default:
@@ -38,7 +37,10 @@ export function DatosProvider({ children }) {
   const [cargando, setCargando] = useState(true);
   const [periodo, setPeriodo] = useState('mes');
   const [mesSeleccionado, setMesSeleccionado] = useState(new Date().getMonth());
-  const esMesFuturo = mesSeleccionado > new Date().getMonth();
+  const [añoSeleccionado, setAñoSeleccionado] = useState(new Date().getFullYear());
+  const esMesFuturo =
+    añoSeleccionado > new Date().getFullYear() ||
+    (añoSeleccionado === new Date().getFullYear() && mesSeleccionado > new Date().getMonth());
 
 
   const cargarTodo = useCallback(async () => {
@@ -92,10 +94,10 @@ export function DatosProvider({ children }) {
 
   // Datos filtrados por período — se recalculan solos al cambiar el período
   const datosFiltrados = useMemo(() => ({
-    ventas: aplicarFiltro(datos.ventas, periodo, 'fecha', mesSeleccionado),
-    compras: aplicarFiltro(datos.compras, periodo, 'fecha', mesSeleccionado),
-    gastos: aplicarFiltro(datos.gastos, periodo, 'fecha', mesSeleccionado),
-  }), [datos.ventas, datos.compras, datos.gastos, periodo, mesSeleccionado]);
+    ventas: aplicarFiltro(datos.ventas, periodo, 'fecha', mesSeleccionado, añoSeleccionado),
+    compras: aplicarFiltro(datos.compras, periodo, 'fecha', mesSeleccionado, añoSeleccionado),
+    gastos: aplicarFiltro(datos.gastos, periodo, 'fecha', mesSeleccionado, añoSeleccionado),
+  }), [datos.ventas, datos.compras, datos.gastos, periodo, mesSeleccionado, añoSeleccionado]);
 
   return (
     <DatosContext.Provider value={{
@@ -109,8 +111,10 @@ export function DatosProvider({ children }) {
       periodo,
       setPeriodo,
       mesSeleccionado,
+      añoSeleccionado,
       esMesFuturo,
       setMesSeleccionado,
+      setAñoSeleccionado,
       cargando,
       recargar,
       recargarTodo: cargarTodo,

@@ -38,11 +38,14 @@ const ProductoController = {
   create: async (req, res, next) => {
     try {
       const { nombre, categoria_id, precio_minorista, precio_mayorista, precio_compra, stock_actual } = req.body;
-      if (!nombre || !precio_minorista || !precio_mayorista) {
-        return res.status(400).json({ success: false, error: "nombre, precio_minorista y precio_mayorista son requeridos." });
+      if (!nombre || !precio_minorista) {
+        return res.status(400).json({ success: false, error: "nombre y precio_minorista son requeridos." });
+      }
+      if (precio_mayorista !== undefined && precio_mayorista !== null && precio_mayorista !== '' && Number(precio_mayorista) < 0) {
+        return res.status(400).json({ success: false, error: "El precio mayorista no puede ser negativo." });
       }
       const producto = await ProductoModel.create({
-        nombre, categoria_id, precio_minorista, precio_mayorista, precio_compra, stock_actual,
+        nombre, categoria_id, precio_minorista, precio_mayorista: precio_mayorista || null, precio_compra, stock_actual,
         usuario_id: req.usuario_id,
       });
       res.status(201).json({ success: true, data: producto });
@@ -54,11 +57,14 @@ const ProductoController = {
     try {
       const { id } = req.params;
       const { nombre, categoria_id, precio_minorista, precio_mayorista, precio_compra, stock_actual } = req.body;
-      if (!nombre || !precio_minorista || !precio_mayorista) {
-        return res.status(400).json({ success: false, error: "nombre, precio_minorista y precio_mayorista son requeridos." });
+      if (!nombre || !precio_minorista) {
+        return res.status(400).json({ success: false, error: "nombre y precio_minorista son requeridos." });
+      }
+      if (precio_mayorista !== undefined && precio_mayorista !== null && precio_mayorista !== '' && Number(precio_mayorista) < 0) {
+        return res.status(400).json({ success: false, error: "El precio mayorista no puede ser negativo." });
       }
       const producto = await ProductoModel.update(id, {
-        nombre, categoria_id, precio_minorista, precio_mayorista, precio_compra, stock_actual,
+        nombre, categoria_id, precio_minorista, precio_mayorista: precio_mayorista || null, precio_compra, stock_actual,
       }, req.usuario_id);
       if (!producto) return res.status(404).json({ success: false, error: "Producto no encontrado." });
       res.json({ success: true, data: producto });

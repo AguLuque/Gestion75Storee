@@ -180,3 +180,45 @@ test("un método de pago inválido es rechazado", async () => {
     (err) => err.status === 400
   );
 });
+
+test("vender por mayor un producto sin precio mayorista requiere precio manual", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_mayorista: null });
+
+  await assert.rejects(
+    () => VentaService.crearVenta({
+      tipo: "mayorista", items: [{ producto_id: p.id, cantidad: 2 }], usuario_id: REAL_UID,
+    }),
+    (err) => err.status === 400
+  );
+
+  const venta = await VentaService.crearVenta({
+    tipo: "mayorista", items: [{ producto_id: p.id, cantidad: 2, precio_unitario: 4500 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+  assert.equal(Number(venta.total), 9000, "debe respetar el precio cargado a mano");
+});
+
+test("una venta por MercadoLibre descuenta la comisión de la ganancia", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_compra: 100, precio_minorista: 200 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", canal: "mercadolibre", comision: 30,
+    items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  assert.equal(venta.canal, "mercadolibre");
+  assert.equal(Number(venta.comision), 30);
+  assert.equal(Number(venta.ganancia), 100 - 30, "la ganancia bruta (100) menos la comisión (30) = 70");
+});
+
+test("un canal inválido es rechazado", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  await assert.rejects(
+    () => VentaService.crearVenta({
+      tipo: "minorista", canal: "instagram", items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+    }),
+    (err) => err.status === 400
+  );
+});

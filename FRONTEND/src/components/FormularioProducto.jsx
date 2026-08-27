@@ -34,7 +34,7 @@ export default function FormularioProducto({ productoInicial, categorias, onGuar
       ...formulario,
       categoria_id: Number(formulario.categoria_id) || null,
       precio_minorista: Number(formulario.precio_minorista),
-      precio_mayorista: Number(formulario.precio_mayorista),
+      precio_mayorista: formulario.precio_mayorista === '' ? null : Number(formulario.precio_mayorista),
       precio_compra: Number(formulario.precio_compra) || 0,
       stock_actual: Number(formulario.stock_actual) || 0,
     });
@@ -68,12 +68,15 @@ export default function FormularioProducto({ productoInicial, categorias, onGuar
           onCambio={(valor) => actualizar('precio_minorista', valor)}
           required
         />
-        <InputPrecio
-          label="Precio mayorista *"
-          valorInicial={formulario.precio_mayorista}
-          onCambio={(valor) => actualizar('precio_mayorista', valor)}
-          required
-        />
+        <div>
+          <InputPrecio
+            label="Precio mayorista"
+            valorInicial={formulario.precio_mayorista}
+            onCambio={(valor) => actualizar('precio_mayorista', valor || '')}
+            placeholder="Opcional"
+          />
+          <p className="text-xs text-slate-400 mt-1">Dejalo vacío si no vendés este producto por mayor.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

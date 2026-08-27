@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertCircle, Check, Undo2 } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
 import { deudoresApi } from '../services/api.js';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
@@ -8,6 +8,11 @@ import { Boton, Card, Modal, Input, InputPrecio, Textarea, Spinner, Tabla, Modal
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 const formularioVacio = { nombre: '', monto: '', plazo: '', observaciones: '' };
+const FILTROS = [
+  { valor: 'todos', etiqueta: 'Todos' },
+  { valor: 'pendientes', etiqueta: 'Pendientes' },
+  { valor: 'pagados', etiqueta: 'Pagados' },
+];
 
 export default function Deudores() {
   const { deudores, cargando, recargar } = useDatosGlobal();
@@ -19,9 +24,15 @@ export default function Deudores() {
   const [formulario, setFormulario] = useState(formularioVacio);
   const [confirmEliminar, setConfirmEliminar] = useState(null);
   const [detalleMobile, setDetalleMobile] = useState(null);
+  const [filtro, setFiltro] = useState('todos');
 
   const listaDeudores = Array.isArray(deudores) ? deudores : [];
-  const totalDeuda = listaDeudores.reduce((s, d) => s + Number(d.monto || 0), 0);
+  const totalDeuda = listaDeudores.filter(d => !d.pagado).reduce((s, d) => s + Number(d.monto || 0), 0);
+  const deudoresFiltrados = listaDeudores.filter(d => {
+    if (filtro === 'pendientes') return !d.pagado;
+    if (filtro === 'pagados') return d.pagado;
+    return true;
+  });
 
   function abrirCrear() {
     setEditando(null);
@@ -52,7 +63,6 @@ export default function Deudores() {
       plazo: formulario.plazo || null,
       observaciones: formulario.observaciones || null,
     };
-    console.log('Enviando datos:', datos);
     const accion = editando
       ? () => deudoresApi.actualizar(editando.id, datos)
       : () => deudoresApi.crear(datos);
@@ -78,6 +88,16 @@ export default function Deudores() {
     }
   }
 
+  async function alternarPagado(deudor) {
+    const resultado = await ejecutar(() => deudoresApi.marcarPagado(deudor.id, !deudor.pagado));
+    if (resultado.ok) {
+      mostrarToast(deudor.pagado ? 'Marcado como pendiente' : 'Marcado como pagado');
+      recargar('deudores');
+    } else {
+      mostrarToast(resultado.error, 'error');
+    }
+  }
+
   function colorPlazo(plazo) {
     if (!plazo) return 'default';
     const dias = Math.ceil((new Date(plazo) - new Date()) / (1000 * 60 * 60 * 24));
@@ -95,6 +115,11 @@ export default function Deudores() {
     return formatearFecha(plazo);
   }
 
+  function badgeEstado(d) {
+    if (d.pagado) return <Badge color="verde">Pagado</Badge>;
+    return <Badge color={colorPlazo(d.plazo)}>{textoVencimiento(d.plazo)}</Badge>;
+  }
+
   if (cargando) return <Spinner />;
 
   return (
@@ -109,8 +134,8 @@ export default function Deudores() {
         <Boton onClick={abrirCrear}><Plus size={16} /> Nuevo</Boton>
       </div>
 
-      {/* Alerta si hay deudas vencidas */}
-      {listaDeudores.some(d => d.plazo && new Date(d.plazo) < new Date()) && (
+      {/* Alerta si hay deudas vencidas (solo pendientes) */}
+      {listaDeudores.some(d => !d.pagado && d.plazo && new Date(d.plazo) < new Date()) && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
           <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
           <p className="text-sm text-red-600">
@@ -119,32 +144,56 @@ export default function Deudores() {
         </div>
       )}
 
+      <div className="flex items-center gap-1.5">
+        {FILTROS.map(f => (
+          <button
+            key={f.valor}
+            onClick={() => setFiltro(f.valor)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filtro === f.valor
+                ? 'bg-primary-300 text-slate-900'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {f.etiqueta}
+          </button>
+        ))}
+      </div>
+
       <Card className="p-5">
         <Tabla
-          columnas={['Deudor', 'Monto', 'Vencimiento', 'Observaciones', 'Acciones']}
-          datos={listaDeudores}
+          columnas={['Deudor', 'Monto', 'Estado', 'Observaciones', 'Acciones']}
+          datos={deudoresFiltrados}
           vacio="Sin deudores registrados"
           onSeleccionar={setDetalleMobile}
           renderCardMobile={(d) => (
             <>
-              <p className="text-sm font-medium text-slate-800 truncate">{d.nombre}</p>
+              <p className={`text-sm font-medium truncate ${d.pagado ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{d.nombre}</p>
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge color={colorPlazo(d.plazo)}>{textoVencimiento(d.plazo)}</Badge>
+                {badgeEstado(d)}
               </div>
               <p className="text-sm font-semibold text-slate-800">{formatearPrecio(d.monto)}</p>
             </>
           )}
           renderFila={(d) => (
             <>
-              <td className="py-3 pr-4 font-medium text-slate-800">{d.nombre}</td>
+              <td className={`py-3 pr-4 font-medium ${d.pagado ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{d.nombre}</td>
               <td className="py-3 pr-4 font-semibold text-slate-800">{formatearPrecio(d.monto)}</td>
               <td className="py-3 pr-4">
-                <Badge color={colorPlazo(d.plazo)}>{textoVencimiento(d.plazo)}</Badge>
+                {badgeEstado(d)}
               </td>
               <td className="py-3 pr-4 text-slate-500 text-xs max-w-xs truncate">
                 {d.observaciones || '—'}
               </td>
               <td className="py-3 flex gap-1.5">
+                <Boton
+                  variante="fantasma"
+                  tamaño="sm"
+                  onClick={() => alternarPagado(d)}
+                  title={d.pagado ? 'Marcar como pendiente' : 'Marcar como pagado'}
+                >
+                  {d.pagado ? <Undo2 size={14} /> : <Check size={14} />}
+                </Boton>
                 <Boton variante="fantasma" tamaño="sm" onClick={() => abrirEditar(d)}>
                   <Pencil size={14} />
                 </Boton>
@@ -214,6 +263,13 @@ export default function Deudores() {
         titulo={detalleMobile?.nombre}
         footer={detalleMobile && (
           <>
+            <Boton
+              variante="secundario"
+              onClick={() => { alternarPagado(detalleMobile); setDetalleMobile(null); }}
+            >
+              {detalleMobile.pagado ? <Undo2 size={14} /> : <Check size={14} />}
+              {detalleMobile.pagado ? 'Marcar pendiente' : 'Marcar pagado'}
+            </Boton>
             <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
               <Pencil size={14} /> Editar
             </Boton>
@@ -225,8 +281,12 @@ export default function Deudores() {
       >
         {detalleMobile && (
           <div>
+            <DetalleCampo etiqueta="Estado" valor={detalleMobile.pagado ? 'Pagado' : 'Pendiente'} />
             <DetalleCampo etiqueta="Monto" valor={formatearPrecio(detalleMobile.monto)} />
             <DetalleCampo etiqueta="Vencimiento" valor={textoVencimiento(detalleMobile.plazo)} />
+            {detalleMobile.pagado && detalleMobile.fecha_pago && (
+              <DetalleCampo etiqueta="Pagado el" valor={formatearFecha(detalleMobile.fecha_pago)} />
+            )}
             <DetalleCampo etiqueta="Observaciones" valor={detalleMobile.observaciones} />
           </div>
         )}

@@ -2,6 +2,17 @@ import CompraModel from "../models/compra.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 
+const TIPOS_COMPRA_VALIDOS = ["local", "nacional", "internacional"];
+
+const validarCabecera = ({ tipo, costo_envio }) => {
+  if (tipo && !TIPOS_COMPRA_VALIDOS.includes(tipo)) {
+    throw { status: 400, message: `tipo debe ser uno de: ${TIPOS_COMPRA_VALIDOS.join(", ")}.` };
+  }
+  if (costo_envio !== undefined && costo_envio !== null && Number(costo_envio) < 0) {
+    throw { status: 400, message: "El costo de envío no puede ser negativo." };
+  }
+};
+
 const validarItems = (items) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw { status: 400, message: "Se requiere al menos un ítem en la compra." };
@@ -45,7 +56,8 @@ const verificarPropiedad = async (client, item, usuario_id) => {
   }
 };
 
-const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) => {
+const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, items, usuario_id }) => {
+  validarCabecera({ tipo, costo_envio });
   validarItems(items);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
@@ -59,7 +71,7 @@ const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) =
     }
 
     const compra = await CompraModel.insertCabecera(client, {
-      proveedor_id, total, observaciones, usuario_id,
+      proveedor_id, total, observaciones, tipo, costo_envio, usuario_id,
     });
     const itemsCreados = [];
     for (const item of items) {
@@ -89,7 +101,8 @@ const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) =
   }
 };
 
-const editarCompra = async (id, { proveedor_id, observaciones, items, usuario_id }) => {
+const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio, items, usuario_id }) => {
+  validarCabecera({ tipo, costo_envio });
   validarItems(items);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
@@ -125,7 +138,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, items, usuario_id
     }
 
     await CompraModel.deleteItems(client, id);
-    await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones }, usuario_id);
+    await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones, tipo, costo_envio }, usuario_id);
     for (const item of items) {
       await CompraModel.insertItem(client, {
         compra_id: id,

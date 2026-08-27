@@ -82,6 +82,9 @@ export default function Ventas() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge color={venta.tipo === 'mayorista' ? 'violeta' : 'azul'}>{venta.tipo}</Badge>
+                  {venta.canal === 'mercadolibre' && (
+                    <Badge color="amarillo">MercadoLibre</Badge>
+                  )}
                   {venta.metodo_pago && (
                     <Badge color="default">{venta.metodo_pago}</Badge>
                   )}
@@ -118,6 +121,12 @@ export default function Ventas() {
                         <span className="text-slate-700 font-medium">{formatearPrecio(item.subtotal)}</span>
                       </div>
                     ))}
+                    {Number(venta.comision) > 0 && (
+                      <div className="flex justify-between text-xs pt-1 border-t border-slate-200 mt-1">
+                        <span className="text-slate-500">Comisión MercadoLibre</span>
+                        <span className="text-red-500 font-medium">-{formatearPrecio(venta.comision)}</span>
+                      </div>
+                    )}
                     {venta.observaciones && (
                       <p className="text-xs text-slate-400 pt-1 border-t border-slate-200 mt-1">
                         {venta.observaciones}
@@ -139,6 +148,9 @@ export default function Ventas() {
                 <p className="text-sm font-medium text-slate-800">{formatearPrecio(venta.total)}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge color={venta.tipo === 'mayorista' ? 'violeta' : 'azul'}>{venta.tipo}</Badge>
+                  {venta.canal === 'mercadolibre' && (
+                    <Badge color="amarillo">MercadoLibre</Badge>
+                  )}
                   <span className="text-xs text-slate-400">{formatearFecha(venta.fecha)}</span>
                 </div>
                 {venta.ganancia != null && (
@@ -187,6 +199,10 @@ export default function Ventas() {
             <DetalleCampo etiqueta="Fecha" valor={formatearFecha(detalleMobile.fecha)} />
             <DetalleCampo etiqueta="Tipo" valor={detalleMobile.tipo} />
             <DetalleCampo etiqueta="Método de pago" valor={detalleMobile.metodo_pago} />
+            <DetalleCampo etiqueta="Canal" valor={detalleMobile.canal === 'mercadolibre' ? 'MercadoLibre' : 'Directa'} />
+            {Number(detalleMobile.comision) > 0 && (
+              <DetalleCampo etiqueta="Comisión MercadoLibre" valor={`-${formatearPrecio(detalleMobile.comision)}`} />
+            )}
             <DetalleCampo etiqueta="Ganancia" valor={detalleMobile.ganancia != null ? formatearPrecio(detalleMobile.ganancia) : '—'} />
             {detalleMobile.items?.length > 0 && (
               <div className="pt-2">
