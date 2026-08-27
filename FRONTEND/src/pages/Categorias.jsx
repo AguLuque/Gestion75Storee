@@ -4,7 +4,7 @@ import { useAccion } from '../hooks/useDatos.js';
 import { categoriasApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { Boton, Card, Modal, Input, Spinner, Tabla, ModalConfirmar } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Input, Spinner, Tabla, ModalConfirmar, Drawer } from '../components/ui/index.jsx';
 
 export default function Categorias() {
   const { categorias, cargando, recargar } = useDatosGlobal();
@@ -15,6 +15,7 @@ export default function Categorias() {
   const [editando, setEditando] = useState(null);
   const [nombre, setNombre] = useState('');
   const [confirmEliminar, setConfirmEliminar] = useState(null);
+  const [detalleMobile, setDetalleMobile] = useState(null);
 
   function abrirCrear() {
     setEditando(null);
@@ -72,6 +73,10 @@ export default function Categorias() {
           columnas={['Nombre', 'Acciones']}
           datos={categorias || []}
           vacio="Sin categorías"
+          onSeleccionar={setDetalleMobile}
+          renderCardMobile={(cat) => (
+            <p className="text-sm font-medium text-slate-800 truncate">{cat.nombre}</p>
+          )}
           renderFila={(cat) => (
             <>
               <td className="py-3 pr-4 font-medium text-slate-800">{cat.nombre}</td>
@@ -111,6 +116,22 @@ export default function Categorias() {
         onConfirmar={eliminar}
         mensaje={`¿Eliminar la categoría "${confirmEliminar?.nombre}"?`}
         cargando={guardando}
+      />
+
+      <Drawer
+        abierto={!!detalleMobile}
+        onCerrar={() => setDetalleMobile(null)}
+        titulo={detalleMobile?.nombre}
+        footer={detalleMobile && (
+          <>
+            <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
+              <Pencil size={14} /> Editar
+            </Boton>
+            <Boton variante="peligro" onClick={() => { setDetalleMobile(null); setConfirmEliminar(detalleMobile); }}>
+              <Trash2 size={14} /> Eliminar
+            </Boton>
+          </>
+        )}
       />
     </div>
   );

@@ -20,21 +20,27 @@ const VarianteModel = {
     return rows;
   },
 
-  // Obtener una variante por ID
-  getById: async (id) => {
+  // Obtener una variante por ID (verificando que el producto sea del usuario autenticado)
+  getById: async (id, usuario_id) => {
     const { rows } = await pool.query(
       `SELECT v.*, p.nombre AS producto_nombre,
               p.precio_minorista, p.precio_mayorista, p.precio_compra
        FROM variantes v
        JOIN productos p ON p.id = v.producto_id
-       WHERE v.id = $1`,
-      [id]
+       WHERE v.id = $1 AND p.usuario_id = $2`,
+      [id, usuario_id]
     );
     return rows[0] || null;
   },
 
-  // Crear una nueva variante para un producto
-  create: async ({ producto_id, talle, color, stock_actual, precio_extra }) => {
+  // Crear una nueva variante para un producto (verifica que el producto sea del usuario)
+  create: async ({ producto_id, talle, color, stock_actual, precio_extra, usuario_id }) => {
+    const { rows: productoRows } = await pool.query(
+      `SELECT id FROM productos WHERE id = $1 AND usuario_id = $2 AND activo = true`,
+      [producto_id, usuario_id]
+    );
+    if (!productoRows[0]) return null;
+
     const { rows } = await pool.query(
       `INSERT INTO variantes (producto_id, talle, color, stock_actual, precio_extra)
        VALUES ($1, $2, $3, $4, $5)
@@ -45,34 +51,39 @@ const VarianteModel = {
   },
 
   // Actualizar datos de una variante (talle, color, precio_extra)
-  update: async (id, { talle, color, precio_extra }) => {
+  update: async (id, { talle, color, precio_extra }, usuario_id) => {
     const { rows } = await pool.query(
-      `UPDATE variantes
+      `UPDATE variantes v
        SET talle = $1, color = $2, precio_extra = $3
-       WHERE id = $4
-       RETURNING *`,
-      [talle ?? null, color ?? null, precio_extra ?? 0, id]
+       FROM productos p
+       WHERE v.id = $4 AND v.producto_id = p.id AND p.usuario_id = $5
+       RETURNING v.*`,
+      [talle ?? null, color ?? null, precio_extra ?? 0, id, usuario_id]
     );
     return rows[0] || null;
   },
 
   // Eliminar una variante
-  delete: async (id) => {
+  delete: async (id, usuario_id) => {
     const { rows } = await pool.query(
-      `DELETE FROM variantes WHERE id = $1 RETURNING id, talle, color`,
-      [id]
+      `DELETE FROM variantes v
+       USING productos p
+       WHERE v.id = $1 AND v.producto_id = p.id AND p.usuario_id = $2
+       RETURNING v.id, v.talle, v.color`,
+      [id, usuario_id]
     );
     return rows[0] || null;
   },
 
   // Ajuste manual de stock de una variante (el cliente carga lo que tiene)
-  updateStockManual: async (id, stock_actual) => {
+  updateStockManual: async (id, stock_actual, usuario_id) => {
     const { rows } = await pool.query(
-      `UPDATE variantes
+      `UPDATE variantes v
        SET stock_actual = $1
-       WHERE id = $2
-       RETURNING *`,
-      [stock_actual, id]
+       FROM productos p
+       WHERE v.id = $2 AND v.producto_id = p.id AND p.usuario_id = $3
+       RETURNING v.*`,
+      [stock_actual, id, usuario_id]
     );
     return rows[0] || null;
   },
@@ -92,14 +103,15 @@ const VarianteModel = {
 
   // Verificar stock de una variante con bloqueo (FOR UPDATE)
   // Evita race conditions cuando dos ventas ocurren al mismo tiempo
-  checkStock: async (client, variante_id, cantidad) => {
+  // También verifica que la variante pertenezca a un producto del usuario autenticado
+  checkStock: async (client, variante_id, cantidad, usuario_id) => {
     const { rows } = await client.query(
       `SELECT v.stock_actual, p.precio_compra, p.precio_minorista, p.precio_mayorista, v.precio_extra
        FROM variantes v
        JOIN productos p ON p.id = v.producto_id
-       WHERE v.id = $1
-       FOR UPDATE`,
-      [variante_id]
+       WHERE v.id = $1 AND p.usuario_id = $2
+       FOR UPDATE OF v`,
+      [variante_id, usuario_id]
     );
 
     if (!rows[0]) {

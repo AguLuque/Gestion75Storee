@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3 } from 'lucide-react';
+import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3, Trophy } from 'lucide-react';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
@@ -13,7 +13,6 @@ export default function Dashboard() {
     comprasFiltradas: compras,
     gastosFiltrados: gastos,
     deudores,
-    bajoStock,
     cargando,
     mesSeleccionado,
     esMesFuturo
@@ -22,7 +21,6 @@ export default function Dashboard() {
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];
   const listaGastos = Array.isArray(gastos) ? gastos : [];
-  const listaBajoStock = Array.isArray(bajoStock) ? bajoStock : [];
   const listaDeudores = Array.isArray(deudores) ? deudores : [];
   const stats = useMemo(() => {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
@@ -34,6 +32,20 @@ export default function Dashboard() {
     return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalDeudasPorCobrar };
   }, [listaVentas, listaCompras, listaGastos, listaDeudores]);
 
+  // Ranking de productos más vendidos (por unidades) en el período seleccionado
+  const masVendidos = useMemo(() => {
+    const conteo = new Map();
+    for (const venta of listaVentas) {
+      for (const item of venta.items || []) {
+        const clave = item.producto_id ?? item.producto;
+        const previo = conteo.get(clave) || { nombre: item.producto, cantidad: 0 };
+        previo.cantidad += Number(item.cantidad || 0);
+        conteo.set(clave, previo);
+      }
+    }
+    return [...conteo.values()].sort((a, b) => b.cantidad - a.cantidad).slice(0, 6);
+  }, [listaVentas]);
+
   if (cargando) return <Spinner />;
 
   return (
@@ -43,7 +55,7 @@ export default function Dashboard() {
         <p className="text-sm text-slate-500 mt-0.5">Resumen general del negocio</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
         <StatCard
           titulo="Total vendido"
           valor={formatearPrecio(stats.totalVentas)}
@@ -112,18 +124,17 @@ export default function Dashboard() {
 
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-amber-500" />
-            <h2 className="font-semibold text-slate-700 text-sm">Stock bajo</h2>
+            <h2 className="font-semibold text-slate-700 text-sm">Más vendidos</h2>
           </div>
           <div className="space-y-0">
-            {listaBajoStock.slice(0, 6).map(p => (
-              <div key={p.id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                <p className="text-sm text-slate-700">{p.nombre}</p>
-                <Badge color="amarillo">{p.stock_actual} u.</Badge>
+            {masVendidos.map((p, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-0">
+                <p className="text-sm text-slate-700 truncate">{p.nombre}</p>
+                <Badge color="verde">{p.cantidad} {p.cantidad === 1 ? 'vendido' : 'vendidos'}</Badge>
               </div>
             ))}
-            {listaBajoStock.length === 0 && (
-              <p className="text-sm text-slate-400 py-4 text-center">✓ Todo el stock está bien</p>
+            {masVendidos.length === 0 && (
+              <p className="text-sm text-slate-400 py-4 text-center">Sin ventas en este período todavía</p>
             )}
           </div>
         </Card>

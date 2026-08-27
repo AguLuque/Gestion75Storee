@@ -31,22 +31,22 @@ const GastoModel = {
     return rows;
   },
 
-  create: async ({ descripcion, monto, categoria, usuario_id }) => {
+  create: async ({ descripcion, monto, categoria, metodo_pago, usuario_id }) => {
     const { rows } = await pool.query(
-      `INSERT INTO gastos (descripcion, monto, categoria, usuario_id)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-      [descripcion, monto, categoria ?? null, usuario_id]
+      `INSERT INTO gastos (descripcion, monto, categoria, metodo_pago, usuario_id)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [descripcion, monto, categoria ?? null, metodo_pago ?? null, usuario_id]
     );
     return rows[0];
   },
 
-  update: async (id, { descripcion, monto, categoria }, usuario_id) => {
+  update: async (id, { descripcion, monto, categoria, metodo_pago }, usuario_id) => {
     const { rows } = await pool.query(
       `UPDATE gastos
-     SET descripcion = $1, monto = $2, categoria = $3
-     WHERE id = $4 AND usuario_id = $5
+     SET descripcion = $1, monto = $2, categoria = $3, metodo_pago = $4
+     WHERE id = $5 AND usuario_id = $6
      RETURNING *`,
-      [descripcion, monto, categoria, id, usuario_id]
+      [descripcion, monto, categoria, metodo_pago ?? null, id, usuario_id]
     );
     return rows[0] || null;
   },

@@ -33,8 +33,8 @@ const VentaController = {
   // Body esperado: { tipo: 'minorista'|'mayorista', observaciones?, items: [{ producto_id, cantidad }] }
   create: async (req, res, next) => {
     try {
-      const { tipo, observaciones, items } = req.body;
-      const venta = await VentaService.crearVenta({ tipo, observaciones, items, usuario_id: req.usuario_id });
+      const { tipo, observaciones, metodo_pago, items } = req.body;
+      const venta = await VentaService.crearVenta({ tipo, observaciones, metodo_pago, items, usuario_id: req.usuario_id });
       res.status(201).json({ success: true, data: venta });
     } catch (err) { next(err); }
   },
@@ -42,8 +42,7 @@ const VentaController = {
   delete: async (req, res, next) => {
     try {
       const { id } = req.params;
-      const resultado = await VentaModel.delete(id, req.usuario_id);
-      if (!resultado) return res.status(404).json({ success: false, error: "Venta no encontrada o ya fue eliminada." });
+      const resultado = await VentaService.eliminarVenta(id, req.usuario_id);
       res.json({ success: true, message: `Venta del ${new Date(resultado.fecha).toLocaleDateString('es-AR')} por $${resultado.total} eliminada correctamente.` });
     } catch (err) { next(err); }
   },

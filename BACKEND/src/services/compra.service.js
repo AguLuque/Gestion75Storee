@@ -2,7 +2,7 @@ import CompraModel from "../models/compra.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 
-const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) => {
+const validarItems = (items) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw { status: 400, message: "Se requiere al menos un ítem en la compra." };
   }
@@ -18,12 +18,45 @@ const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) =
       throw { status: 400, message: "El precio unitario no puede ser negativo." };
     }
   }
+};
+
+// Verifica que el producto/variante del ítem pertenezca al usuario autenticado
+// y bloquea la fila (FOR UPDATE) para la actualización de stock que sigue.
+const verificarPropiedad = async (client, item, usuario_id) => {
+  if (item.variante_id) {
+    const { rows } = await client.query(
+      `SELECT v.id FROM variantes v
+       JOIN productos p ON p.id = v.producto_id
+       WHERE v.id = $1 AND p.usuario_id = $2
+       FOR UPDATE OF v`,
+      [item.variante_id, usuario_id]
+    );
+    if (!rows[0]) {
+      throw { status: 404, message: `Variante ${item.variante_id} no encontrada.` };
+    }
+  } else {
+    const { rows } = await client.query(
+      `SELECT id FROM productos WHERE id = $1 AND activo = true AND usuario_id = $2 FOR UPDATE`,
+      [item.producto_id, usuario_id]
+    );
+    if (!rows[0]) {
+      throw { status: 404, message: `Producto ${item.producto_id} no encontrado.` };
+    }
+  }
+};
+
+const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) => {
+  validarItems(items);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
   const client = await CompraModel.getClient();
 
   try {
     await client.query("BEGIN");
+
+    for (const item of items) {
+      await verificarPropiedad(client, item, usuario_id);
+    }
 
     const compra = await CompraModel.insertCabecera(client, {
       proveedor_id, total, observaciones, usuario_id,
@@ -57,9 +90,7 @@ const crearCompra = async ({ proveedor_id, observaciones, items, usuario_id }) =
 };
 
 const editarCompra = async (id, { proveedor_id, observaciones, items, usuario_id }) => {
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    throw { status: 400, message: "Se requiere al menos un ítem." };
-  }
+  validarItems(items);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
   const client = await CompraModel.getClient();
@@ -67,9 +98,30 @@ const editarCompra = async (id, { proveedor_id, observaciones, items, usuario_id
   try {
     await client.query("BEGIN");
 
+    // Bloquea la compra para serializar ediciones concurrentes de la misma compra
+    const { rows: compraLock } = await client.query(
+      `SELECT id FROM compras WHERE id = $1 AND usuario_id = $2 FOR UPDATE`,
+      [id, usuario_id]
+    );
+    if (!compraLock[0]) {
+      throw { status: 404, message: "Compra no encontrada." };
+    }
+
+    for (const item of items) {
+      await verificarPropiedad(client, item, usuario_id);
+    }
+
     const compraAnterior = await CompraModel.getById(id, usuario_id);
+
+    // Nota: compra_items no guarda variante_id (limitación actual del esquema), así que
+    // item.variante_id acá siempre es undefined hoy. Se deja la rama lista para cuando
+    // se persista esa columna — por ahora se comporta igual que antes para todo dato real.
     for (const item of compraAnterior.items) {
-      await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
+      if (item.variante_id) {
+        await VarianteModel.updateStock(item.variante_id, -item.cantidad, client);
+      } else {
+        await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
+      }
     }
 
     await CompraModel.deleteItems(client, id);
@@ -82,7 +134,12 @@ const editarCompra = async (id, { proveedor_id, observaciones, items, usuario_id
         cantidad: item.cantidad,
         precio_unitario: item.precio_unitario,
       });
-      await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
+
+      if (item.variante_id) {
+        await VarianteModel.updateStock(item.variante_id, item.cantidad, client);
+      } else {
+        await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
+      }
     }
 
     await client.query("COMMIT");

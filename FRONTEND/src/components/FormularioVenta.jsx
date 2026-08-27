@@ -10,6 +10,7 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
   const [tipo, setTipo] = useState('minorista');
   const [items, setItems] = useState([itemVacio()]);
   const [observaciones, setObservaciones] = useState('');
+  const [metodoPago, setMetodoPago] = useState('efectivo');
 
   function actualizarItem(idx, campo, valor) {
     setItems(prev => {
@@ -74,6 +75,7 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
     onGuardar({
       tipo,
       observaciones: observaciones || null,
+      metodo_pago: metodoPago,
       items: itemsValidos.map(i => ({
         producto_id: Number(i.producto_id),
         cantidad: Number(i.cantidad),
@@ -84,14 +86,27 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      <Select
-        label="Tipo de venta"
-        value={tipo}
-        onChange={e => cambiarTipoVenta(e.target.value)}
-      >
-        <option value="minorista">Minorista</option>
-        <option value="mayorista">Mayorista</option>
-      </Select>
+      <div className="grid grid-cols-2 gap-3">
+        <Select
+          label="Tipo de venta"
+          value={tipo}
+          onChange={e => cambiarTipoVenta(e.target.value)}
+        >
+          <option value="minorista">Minorista</option>
+          <option value="mayorista">Mayorista</option>
+        </Select>
+
+        <Select
+          label="Método de pago"
+          value={metodoPago}
+          onChange={e => setMetodoPago(e.target.value)}
+        >
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="otro">Otro</option>
+        </Select>
+      </div>
 
       {/* Items */}
       <div className="space-y-3">
@@ -102,7 +117,7 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
               <select
                 value={item.producto_id}
                 onChange={e => actualizarItem(idx, 'producto_id', e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                className="w-full text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                 required
               >
                 <option value="">Seleccionar...</option>
@@ -118,7 +133,7 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
                 value={item.cantidad}
                 onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}
                 placeholder="Cant."
-                className="w-20 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-20 text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
               />
             </div>

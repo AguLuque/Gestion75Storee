@@ -6,7 +6,7 @@ import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import {
   Boton, Card, Modal, Badge,
-  Spinner, Tabla, ModalConfirmar
+  Spinner, Tabla, ModalConfirmar, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
 import FormularioProducto from '../components/FormularioProducto.jsx';
@@ -21,6 +21,7 @@ export default function Productos() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoEditando, setProductoEditando] = useState(null);
   const [confirmEliminar, setConfirmEliminar] = useState(null);
+  const [detalleMobile, setDetalleMobile] = useState(null);
 
   const productosFiltrados = (Array.isArray(productos) ? productos : []).filter(p => {
     const coincideBusqueda = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
@@ -86,13 +87,13 @@ export default function Productos() {
               placeholder="Buscar producto..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-base md:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <select
             value={filtroCategoria}
             onChange={e => setFiltroCategoria(e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             <option value="">Todas las categorías</option>
             {(Array.isArray(categorias) ? categorias : []).map(c => (
@@ -106,6 +107,19 @@ export default function Productos() {
         <Tabla
           columnas={['Producto', 'Categoría', 'Stock', 'P. Compra', 'P. Minorista', 'P. Mayorista', 'Acciones']} datos={productosFiltrados}
           vacio="No se encontraron productos"
+          onSeleccionar={setDetalleMobile}
+          renderCardMobile={(p) => (
+            <>
+              <p className="text-sm font-medium text-slate-800 truncate">{p.nombre}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge color="azul">{p.categoria_nombre || '—'}</Badge>
+                <Badge color={p.stock_actual === 0 ? 'rojo' : p.stock_actual <= 2 ? 'amarillo' : 'verde'}>
+                  {p.stock_actual} u.
+                </Badge>
+              </div>
+              <p className="text-sm text-slate-700 font-semibold">{formatearPrecio(p.precio_minorista)}</p>
+            </>
+          )}
           renderFila={(p) => (
             <>
               <td className="py-3 pr-4 font-medium text-slate-800">{p.nombre}</td>
@@ -154,6 +168,32 @@ export default function Productos() {
         mensaje={`¿Eliminar el producto "${confirmEliminar?.nombre}"? Esta acción desactivará el producto.`}
         cargando={guardando}
       />
+
+      <Drawer
+        abierto={!!detalleMobile}
+        onCerrar={() => setDetalleMobile(null)}
+        titulo={detalleMobile?.nombre}
+        footer={detalleMobile && (
+          <>
+            <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
+              <Pencil size={14} /> Editar
+            </Boton>
+            <Boton variante="peligro" onClick={() => { setDetalleMobile(null); setConfirmEliminar(detalleMobile); }}>
+              <Trash2 size={14} /> Eliminar
+            </Boton>
+          </>
+        )}
+      >
+        {detalleMobile && (
+          <div>
+            <DetalleCampo etiqueta="Categoría" valor={detalleMobile.categoria_nombre || '—'} />
+            <DetalleCampo etiqueta="Stock" valor={`${detalleMobile.stock_actual} u.`} />
+            <DetalleCampo etiqueta="Precio de compra" valor={formatearPrecio(detalleMobile.precio_compra)} />
+            <DetalleCampo etiqueta="Precio minorista" valor={formatearPrecio(detalleMobile.precio_minorista)} />
+            <DetalleCampo etiqueta="Precio mayorista" valor={formatearPrecio(detalleMobile.precio_mayorista)} />
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

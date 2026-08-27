@@ -84,6 +84,18 @@ const ProductoModel = {
     );
     return rows[0];
   },
+
+  // Ajuste manual de stock (el cliente carga el valor absoluto que tiene, no un delta)
+  updateStockManual: async (id, stock_actual, usuario_id) => {
+    const { rows } = await pool.query(
+      `UPDATE productos
+     SET stock_actual = $1, updated_at = now()
+     WHERE id = $2 AND activo = true AND usuario_id = $3
+     RETURNING *`,
+      [stock_actual, id, usuario_id]
+    );
+    return rows[0] || null;
+  },
 };
 
 export default ProductoModel;

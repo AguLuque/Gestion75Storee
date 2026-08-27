@@ -119,7 +119,7 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
                 <select
                   value={item.producto_id}
                   onChange={e => actualizarItem(idx, 'producto_id', e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   required
                 >
                   <option value="">Seleccionar...</option>
@@ -128,7 +128,7 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
               </div>
               <input type="number" min="1" value={item.cantidad}
                 onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}
-                placeholder="Cant." className="w-20 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                placeholder="Cant." className="w-20 text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
               <InputPrecio
                 valorInicial={item.precio_unitario}
                 onCambio={valor =>

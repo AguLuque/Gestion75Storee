@@ -1,7 +1,8 @@
 import { cn } from '../../utils.js';
-import { X } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Drawer as DrawerPrimitive } from 'vaul';
 
 // --- Botón ---
 export function Boton({ children, variante = 'primario', tamaño = 'md', className, ...props }) {
@@ -34,7 +35,7 @@ export function Input({ label, error, className, ...props }) {
       {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <input
         className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all',
+          'border border-slate-200 rounded-lg px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-colors',
           error && 'border-red-400 focus:ring-red-400',
           className
         )}
@@ -52,7 +53,7 @@ export function Select({ label, error, children, className, ...props }) {
       {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <select
         className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all',
+          'border border-slate-200 rounded-lg px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-colors',
           error && 'border-red-400',
           className
         )}
@@ -72,7 +73,7 @@ export function Textarea({ label, error, className, ...props }) {
       {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
       <textarea
         className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all resize-none',
+          'border border-slate-200 rounded-lg px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-colors resize-none',
           error && 'border-red-400',
           className
         )}
@@ -130,36 +131,55 @@ export function Modal({ abierto, onCerrar, titulo, children, className }) {
 }
 
 // --- Tabla base ---
-export function Tabla({ columnas, datos, renderFila, vacio = 'Sin datos' }) {
+// En md: para arriba se ve como tabla (sin cambios). Por debajo de md:, se ve
+// como una lista de cards clickeables (renderCardMobile + onSeleccionar),
+// pensada para abrir un <Drawer> con el detalle completo del ítem.
+export function Tabla({ columnas, datos, renderFila, renderCardMobile, onSeleccionar, vacio = 'Sin datos' }) {
   return (
-    <div className="overflow-x-auto -mx-5 px-5">
-      <table className="w-full text-sm min-w-[500px]">
-        <thead>
-          <tr className="border-b border-slate-100">
-            {columnas.map((col, i) => (
-              <th key={i} className="text-left text-xs font-medium text-slate-500 pb-3 pr-4 last:pr-0 whitespace-nowrap">
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {datos.length === 0 ? (
-            <tr>
-              <td colSpan={columnas.length} className="py-8 text-center text-slate-400 text-sm">
-                {vacio}
-              </td>
+    <>
+      <div className="hidden md:block overflow-x-auto -mx-5 px-5">
+        <table className="w-full text-sm min-w-[500px]">
+          <thead>
+            <tr className="border-b border-slate-100">
+              {columnas.map((col, i) => (
+                <th key={i} className="text-left text-xs font-medium text-slate-500 pb-3 pr-4 last:pr-0 whitespace-nowrap">
+                  {col}
+                </th>
+              ))}
             </tr>
+          </thead>
+          <tbody>
+            {datos.length === 0 ? (
+              <tr>
+                <td colSpan={columnas.length} className="py-8 text-center text-slate-400 text-sm">
+                  {vacio}
+                </td>
+              </tr>
+            ) : (
+              datos.map((item, i) => (
+                <tr key={item.id || i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  {renderFila(item)}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {renderCardMobile && (
+        <div className="md:hidden space-y-2">
+          {datos.length === 0 ? (
+            <p className="py-8 text-center text-slate-400 text-sm">{vacio}</p>
           ) : (
             datos.map((item, i) => (
-              <tr key={item.id || i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                {renderFila(item)}
-              </tr>
+              <CardMobile key={item.id || i} onClick={() => onSeleccionar?.(item)}>
+                {renderCardMobile(item)}
+              </CardMobile>
             ))
           )}
-        </tbody>
-      </table>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -228,6 +248,53 @@ export function ModalConfirmar({ abierto, onCerrar, onConfirmar, mensaje, cargan
   );
 }
 
+// --- Drawer (panel deslizable desde abajo, uso mobile) ---
+// Envoltorio de vaul (la misma librería del Drawer oficial de shadcn/ui),
+// restyleado con los mismos tokens que el resto de la app (Card, Modal).
+export function Drawer({ abierto, onCerrar, titulo, children, footer }) {
+  return (
+    <DrawerPrimitive.Root open={abierto} onOpenChange={(v) => !v && onCerrar()}>
+      <DrawerPrimitive.Portal>
+        <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+        <DrawerPrimitive.Content className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl outline-none">
+          <div className="mx-auto mt-3 h-1.5 w-10 flex-shrink-0 rounded-full bg-slate-200" />
+          {titulo && (
+            <div className="px-5 pt-3 pb-2">
+              <DrawerPrimitive.Title className="font-semibold text-slate-800">{titulo}</DrawerPrimitive.Title>
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-5 pb-2">{children}</div>
+          {footer && <div className="flex gap-2 justify-end p-5 pt-3 border-t border-slate-100">{footer}</div>}
+        </DrawerPrimitive.Content>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.Root>
+  );
+}
+
+// --- Fila de detalle dentro de un Drawer (etiqueta: valor) ---
+export function DetalleCampo({ etiqueta, valor }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
+      <span className="text-xs font-medium text-slate-500 flex-shrink-0">{etiqueta}</span>
+      <span className="text-sm text-slate-800 font-medium text-right">{valor ?? '—'}</span>
+    </div>
+  );
+}
+
+// --- Card clickeable para listas en mobile (reemplaza filas de <table>) ---
+export function CardMobile({ children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-3 active:bg-slate-50 transition-colors"
+    >
+      <div className="min-w-0 flex-1 space-y-1">{children}</div>
+      <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
+    </button>
+  );
+}
+
 // --- Hook para formatear precios mientras se escribe ---
 export function usePrecio(valorInicial = '') {
   const [display, setDisplay] = useState(
@@ -285,7 +352,7 @@ export function InputPrecio({ label, valorInicial = '', onCambio, required, plac
           required={required}
           placeholder={placeholder}
           className={cn(
-            'border border-slate-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white transition-all w-full',
+            'border border-slate-200 rounded-lg pl-7 pr-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-colors w-full',
             className
           )}
         />

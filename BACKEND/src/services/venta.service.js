@@ -12,19 +12,26 @@ import VentaModel from "../models/venta.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 
+const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
+
 /**
  * Crea una venta completa con múltiples productos en una sola transacción.
  * @param {Object} data - {
  *   tipo: 'minorista'|'mayorista',
  *   observaciones,
+ *   metodo_pago: 'efectivo'|'transferencia'|'tarjeta'|'otro'|undefined,
  *   items: [{ producto_id, cantidad, variante_id? }]
  * }
  * @returns {Object} - La venta creada con sus ítems y ganancia
  */
-const crearVenta = async ({ tipo, observaciones, items, usuario_id }) => {
+const crearVenta = async ({ tipo, observaciones, metodo_pago, items, usuario_id }) => {
   // Validaciones básicas
   if (!tipo || !["minorista", "mayorista"].includes(tipo)) {
     throw { status: 400, message: "El tipo de venta debe ser 'minorista' o 'mayorista'." };
+  }
+
+  if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
+    throw { status: 400, message: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` };
   }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -56,8 +63,9 @@ const crearVenta = async ({ tipo, observaciones, items, usuario_id }) => {
 
       if (item.variante_id) {
         // — Producto CON variante —
-        // checkStock bloquea la fila con FOR UPDATE y lanza error si no hay stock suficiente
-        const variante = await VarianteModel.checkStock(client, item.variante_id, item.cantidad);
+        // checkStock bloquea la fila con FOR UPDATE, verifica que sea del usuario autenticado
+        // y lanza error si no hay stock suficiente
+        const variante = await VarianteModel.checkStock(client, item.variante_id, item.cantidad, usuario_id);
 
         const precioBase =
           tipo === "mayorista" ? variante.precio_mayorista : variante.precio_minorista;
@@ -75,9 +83,9 @@ const crearVenta = async ({ tipo, observaciones, items, usuario_id }) => {
         const { rows: productoRows } = await client.query(
           `SELECT stock_actual, precio_compra, precio_minorista, precio_mayorista
            FROM productos
-           WHERE id = $1 AND activo = true
+           WHERE id = $1 AND activo = true AND usuario_id = $2
            FOR UPDATE`,
-          [item.producto_id]
+          [item.producto_id, usuario_id]
         );
 
         if (!productoRows[0]) {
@@ -125,6 +133,7 @@ const crearVenta = async ({ tipo, observaciones, items, usuario_id }) => {
       total,
       ganancia,
       observaciones,
+      metodo_pago,
       usuario_id,
     });
 
@@ -157,4 +166,50 @@ const crearVenta = async ({ tipo, observaciones, items, usuario_id }) => {
   }
 };
 
-export default { crearVenta };
+/**
+ * Anula una venta y repone el stock descontado en su momento.
+ * Nota: venta_items no guarda variante_id (limitación actual del esquema),
+ * así que la reposición siempre se hace sobre el stock del producto base.
+ * Hoy esto es correcto para el 100% de las ventas reales, porque el sistema
+ * de variantes todavía no está conectado a ninguna pantalla del frontend.
+ */
+const eliminarVenta = async (id, usuario_id) => {
+  const client = await VentaModel.getClient();
+
+  try {
+    await client.query("BEGIN");
+
+    const { rows: ventaRows } = await client.query(
+      `SELECT id FROM ventas WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
+      [id, usuario_id]
+    );
+
+    if (!ventaRows[0]) {
+      throw { status: 404, message: "Venta no encontrada o ya fue eliminada." };
+    }
+
+    const { rows: items } = await client.query(
+      `SELECT producto_id, cantidad FROM venta_items WHERE venta_id = $1`,
+      [id]
+    );
+
+    for (const item of items) {
+      await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
+    }
+
+    const { rows: ventaEliminada } = await client.query(
+      `UPDATE ventas SET activo = false WHERE id = $1 RETURNING id, total, fecha`,
+      [id]
+    );
+
+    await client.query("COMMIT");
+    return ventaEliminada[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+export default { crearVenta, eliminarVenta };

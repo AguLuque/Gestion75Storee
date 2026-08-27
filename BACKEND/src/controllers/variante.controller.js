@@ -7,7 +7,7 @@ const VarianteController = {
   getByProducto: async (req, res, next) => {
     try {
       const { producto_id } = req.params;
-      const variantes = await VarianteModel.getByProducto(producto_id);
+      const variantes = await VarianteModel.getByProducto(producto_id, req.usuario_id);
       res.json({ success: true, data: variantes });
     } catch (err) {
       next(err);
@@ -18,7 +18,7 @@ const VarianteController = {
   getById: async (req, res, next) => {
     try {
       const { id } = req.params;
-      const variante = await VarianteModel.getById(id);
+      const variante = await VarianteModel.getById(id, req.usuario_id);
 
       if (!variante) {
         return res.status(404).json({ success: false, error: "Variante no encontrada." });
@@ -51,7 +51,12 @@ const VarianteController = {
         color,
         stock_actual,
         precio_extra,
+        usuario_id: req.usuario_id,
       });
+
+      if (!variante) {
+        return res.status(404).json({ success: false, error: "Producto no encontrado." });
+      }
 
       res.status(201).json({ success: true, data: variante });
     } catch (err) {
@@ -73,7 +78,7 @@ const VarianteController = {
         });
       }
 
-      const variante = await VarianteModel.update(id, { talle, color, precio_extra });
+      const variante = await VarianteModel.update(id, { talle, color, precio_extra }, req.usuario_id);
 
       if (!variante) {
         return res.status(404).json({ success: false, error: "Variante no encontrada." });
@@ -99,7 +104,7 @@ const VarianteController = {
         return res.status(400).json({ success: false, error: "El stock no puede ser negativo." });
       }
 
-      const variante = await VarianteModel.updateStockManual(id, stock_actual);
+      const variante = await VarianteModel.updateStockManual(id, stock_actual, req.usuario_id);
 
       if (!variante) {
         return res.status(404).json({ success: false, error: "Variante no encontrada." });
@@ -115,7 +120,7 @@ const VarianteController = {
   delete: async (req, res, next) => {
     try {
       const { id } = req.params;
-      const resultado = await VarianteModel.delete(id);
+      const resultado = await VarianteModel.delete(id, req.usuario_id);
 
       if (!resultado) {
         return res.status(404).json({ success: false, error: "Variante no encontrada." });

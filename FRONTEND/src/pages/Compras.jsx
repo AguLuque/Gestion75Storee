@@ -4,7 +4,7 @@ import { useAccion } from '../hooks/useDatos.js';
 import { comprasApi, productosApi, proveedoresApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { Boton, Card, Modal, Spinner } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Spinner, Drawer, DetalleCampo, CardMobile } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioCompra from '../components/FormularioCompra.jsx';
 
@@ -16,6 +16,7 @@ export default function Compras() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [compraEditando, setCompraEditando] = useState(null);
   const [expandida, setExpandida] = useState(null);
+  const [detalleMobile, setDetalleMobile] = useState(null);
 
 
   function abrirCrear() {
@@ -63,6 +64,7 @@ export default function Compras() {
       </div>
 
       <Card className="p-5">
+        <div className="hidden md:block">
         {(Array.isArray(compras) ? compras : []).length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">Sin compras registradas</p>
         )}
@@ -110,6 +112,22 @@ export default function Compras() {
             )}
           </div>
         ))}
+        </div>
+
+        <div className="md:hidden space-y-2">
+          {(Array.isArray(compras) ? compras : []).length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">Sin compras registradas</p>
+          ) : (
+            (Array.isArray(compras) ? compras : []).map(compra => (
+              <CardMobile key={compra.id} onClick={() => setDetalleMobile(compra)}>
+                <p className="text-sm font-medium text-slate-800">{formatearPrecio(compra.total)}</p>
+                <p className="text-xs text-slate-400">
+                  {formatearFecha(compra.fecha)} · {compra.proveedor || 'Sin proveedor'}
+                </p>
+              </CardMobile>
+            ))
+          )}
+        </div>
       </Card>
 
       <Modal
@@ -128,6 +146,40 @@ export default function Compras() {
           onProductoCreado={'productos'}
         />
       </Modal>
+
+      <Drawer
+        abierto={!!detalleMobile}
+        onCerrar={() => setDetalleMobile(null)}
+        titulo={detalleMobile ? formatearPrecio(detalleMobile.total) : ''}
+        footer={detalleMobile && (
+          <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
+            <Pencil size={14} /> Editar
+          </Boton>
+        )}
+      >
+        {detalleMobile && (
+          <div>
+            <DetalleCampo etiqueta="Fecha" valor={formatearFecha(detalleMobile.fecha)} />
+            <DetalleCampo etiqueta="Proveedor" valor={detalleMobile.proveedor || 'Sin proveedor'} />
+            {detalleMobile.items?.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium text-slate-500 mb-1.5">Productos</p>
+                <div className="bg-slate-50 rounded-lg p-3 space-y-1.5">
+                  {detalleMobile.items.map((item, i) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span className="text-slate-600">{item.producto} × {item.cantidad}</span>
+                      <span className="text-slate-700 font-medium">{formatearPrecio(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {detalleMobile.observaciones && (
+              <DetalleCampo etiqueta="Observaciones" valor={detalleMobile.observaciones} />
+            )}
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

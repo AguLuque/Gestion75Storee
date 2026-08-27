@@ -4,7 +4,7 @@ import { useAccion } from '../hooks/useDatos.js';
 import { deudoresApi } from '../services/api.js';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { Boton, Card, Modal, Input, InputPrecio, Textarea, Spinner, Tabla, ModalConfirmar, Badge } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Input, InputPrecio, Textarea, Spinner, Tabla, ModalConfirmar, Badge, Drawer, DetalleCampo } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 
 const formularioVacio = { nombre: '', monto: '', plazo: '', observaciones: '' };
@@ -18,6 +18,7 @@ export default function Deudores() {
   const [editando, setEditando] = useState(null);
   const [formulario, setFormulario] = useState(formularioVacio);
   const [confirmEliminar, setConfirmEliminar] = useState(null);
+  const [detalleMobile, setDetalleMobile] = useState(null);
 
   const listaDeudores = Array.isArray(deudores) ? deudores : [];
   const totalDeuda = listaDeudores.reduce((s, d) => s + Number(d.monto || 0), 0);
@@ -123,6 +124,16 @@ export default function Deudores() {
           columnas={['Deudor', 'Monto', 'Vencimiento', 'Observaciones', 'Acciones']}
           datos={listaDeudores}
           vacio="Sin deudores registrados"
+          onSeleccionar={setDetalleMobile}
+          renderCardMobile={(d) => (
+            <>
+              <p className="text-sm font-medium text-slate-800 truncate">{d.nombre}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge color={colorPlazo(d.plazo)}>{textoVencimiento(d.plazo)}</Badge>
+              </div>
+              <p className="text-sm font-semibold text-slate-800">{formatearPrecio(d.monto)}</p>
+            </>
+          )}
           renderFila={(d) => (
             <>
               <td className="py-3 pr-4 font-medium text-slate-800">{d.nombre}</td>
@@ -196,6 +207,30 @@ export default function Deudores() {
         mensaje={`¿Eliminar a "${confirmEliminar?.nombre}" de la lista de deudores?`}
         cargando={guardando}
       />
+
+      <Drawer
+        abierto={!!detalleMobile}
+        onCerrar={() => setDetalleMobile(null)}
+        titulo={detalleMobile?.nombre}
+        footer={detalleMobile && (
+          <>
+            <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
+              <Pencil size={14} /> Editar
+            </Boton>
+            <Boton variante="peligro" onClick={() => { setDetalleMobile(null); setConfirmEliminar(detalleMobile); }}>
+              <Trash2 size={14} /> Eliminar
+            </Boton>
+          </>
+        )}
+      >
+        {detalleMobile && (
+          <div>
+            <DetalleCampo etiqueta="Monto" valor={formatearPrecio(detalleMobile.monto)} />
+            <DetalleCampo etiqueta="Vencimiento" valor={textoVencimiento(detalleMobile.plazo)} />
+            <DetalleCampo etiqueta="Observaciones" valor={detalleMobile.observaciones} />
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import GastoModel from "../models/gasto.model.js";
 
+const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
+
 const GastoController = {
   // GET /gastos
   getAll: async (req, res, next) => {
@@ -31,10 +33,13 @@ const GastoController = {
 
   create: async (req, res, next) => {
     try {
-      const { descripcion, monto, categoria } = req.body;
+      const { descripcion, monto, categoria, metodo_pago } = req.body;
       if (!descripcion || monto === undefined) return res.status(400).json({ success: false, error: "descripcion y monto son requeridos." });
       if (monto < 0) return res.status(400).json({ success: false, error: "El monto no puede ser negativo." });
-      const gasto = await GastoModel.create({ descripcion, monto, categoria, usuario_id: req.usuario_id });
+      if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
+        return res.status(400).json({ success: false, error: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` });
+      }
+      const gasto = await GastoModel.create({ descripcion, monto, categoria, metodo_pago, usuario_id: req.usuario_id });
       res.status(201).json({ success: true, data: gasto });
     } catch (err) { next(err); }
   },
@@ -42,9 +47,13 @@ const GastoController = {
   update: async (req, res, next) => {
     try {
       const { id } = req.params;
-      const { descripcion, monto, categoria } = req.body;
+      const { descripcion, monto, categoria, metodo_pago } = req.body;
       if (!descripcion || monto === undefined) return res.status(400).json({ success: false, error: "descripcion y monto son requeridos." });
-      const gasto = await GastoModel.update(id, { descripcion, monto, categoria }, req.usuario_id);
+      if (monto < 0) return res.status(400).json({ success: false, error: "El monto no puede ser negativo." });
+      if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
+        return res.status(400).json({ success: false, error: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` });
+      }
+      const gasto = await GastoModel.update(id, { descripcion, monto, categoria, metodo_pago }, req.usuario_id);
       if (!gasto) return res.status(404).json({ success: false, error: "Gasto no encontrado." });
       res.json({ success: true, data: gasto });
     } catch (err) { next(err); }

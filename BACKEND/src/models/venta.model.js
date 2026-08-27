@@ -8,7 +8,7 @@ const VentaModel = {
   // Obtener todas las ventas con sus ítems
   getAll: async (usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago,
       json_agg(json_build_object(
         'producto_id', vi.producto_id,
         'producto', p.nombre,
@@ -30,7 +30,7 @@ const VentaModel = {
   // Obtener una venta por ID con sus ítems
   getById: async (id, usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago,
       json_agg(json_build_object(
         'producto_id', vi.producto_id,
         'producto', p.nombre,
@@ -51,7 +51,7 @@ const VentaModel = {
   // Obtener ventas filtradas por rango de fechas
   getByPeriodo: async (desde, hasta, usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia,
+    SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.metodo_pago,
       json_agg(json_build_object(
         'producto', p.nombre,
         'cantidad', vi.cantidad,
@@ -69,22 +69,12 @@ const VentaModel = {
     return rows;
   },
 
-  delete: async (id, usuario_id) => {
-    const { rows } = await pool.query(
-      `UPDATE ventas SET activo = false
-     WHERE id = $1 AND activo = true AND usuario_id = $2
-     RETURNING id, total, fecha`,
-      [id, usuario_id]
-    );
-    return rows[0] || null;
-  },
-
   // Insertar cabecera de venta (dentro de una transacción)
-  insertCabecera: async (client, { tipo, total, ganancia, observaciones, usuario_id }) => {
+  insertCabecera: async (client, { tipo, total, ganancia, observaciones, metodo_pago, usuario_id }) => {
     const { rows } = await client.query(
-      `INSERT INTO ventas (tipo, total, ganancia, observaciones, usuario_id)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [tipo, total, ganancia, observaciones ?? null, usuario_id]
+      `INSERT INTO ventas (tipo, total, ganancia, observaciones, metodo_pago, usuario_id)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [tipo, total, ganancia, observaciones ?? null, metodo_pago ?? null, usuario_id]
     );
     return rows[0];
   },
@@ -108,14 +98,14 @@ const VentaModel = {
 
   // Verificar stock disponible con bloqueo de fila (FOR UPDATE)
   // Previene que dos ventas simultáneas descuenten el mismo stock
-  checkStock: async (client, producto_id, cantidad) => {
+  checkStock: async (client, producto_id, cantidad, usuario_id) => {
     const { rows } = await client.query(
       `
       SELECT stock_actual, precio_compra FROM productos
-      WHERE id = $1 AND activo = true
+      WHERE id = $1 AND activo = true AND usuario_id = $2
       FOR UPDATE
     `,
-      [producto_id]
+      [producto_id, usuario_id]
     );
 
     if (!rows[0]) {

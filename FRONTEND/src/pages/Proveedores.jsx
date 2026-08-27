@@ -4,7 +4,7 @@ import { useAccion } from '../hooks/useDatos.js';
 import { proveedoresApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { Boton, Card, Modal, Input, Textarea, Spinner, Tabla, ModalConfirmar } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Input, Textarea, Spinner, Tabla, ModalConfirmar, Drawer, DetalleCampo } from '../components/ui/index.jsx';
 
 const formularioVacio = { nombre: '', contacto: '', observaciones: '' };
 
@@ -17,6 +17,7 @@ export default function Proveedores() {
   const [editando, setEditando] = useState(null);
   const [formulario, setFormulario] = useState(formularioVacio);
   const [confirmEliminar, setConfirmEliminar] = useState(null);
+  const [detalleMobile, setDetalleMobile] = useState(null);
 
   function abrirCrear() {
     setEditando(null);
@@ -78,6 +79,13 @@ export default function Proveedores() {
           columnas={['Nombre', 'Contacto', 'Observaciones', 'Acciones']}
           datos={proveedores || []}
           vacio="Sin proveedores"
+          onSeleccionar={setDetalleMobile}
+          renderCardMobile={(prov) => (
+            <>
+              <p className="text-sm font-medium text-slate-800 truncate">{prov.nombre}</p>
+              <p className="text-xs text-slate-500 truncate">{prov.contacto || 'Sin contacto'}</p>
+            </>
+          )}
           renderFila={(prov) => (
             <>
               <td className="py-3 pr-4 font-medium text-slate-800">{prov.nombre}</td>
@@ -131,6 +139,29 @@ export default function Proveedores() {
         mensaje={`¿Eliminar el proveedor "${confirmEliminar?.nombre}"?`}
         cargando={guardando}
       />
+
+      <Drawer
+        abierto={!!detalleMobile}
+        onCerrar={() => setDetalleMobile(null)}
+        titulo={detalleMobile?.nombre}
+        footer={detalleMobile && (
+          <>
+            <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
+              <Pencil size={14} /> Editar
+            </Boton>
+            <Boton variante="peligro" onClick={() => { setDetalleMobile(null); setConfirmEliminar(detalleMobile); }}>
+              <Trash2 size={14} /> Eliminar
+            </Boton>
+          </>
+        )}
+      >
+        {detalleMobile && (
+          <div>
+            <DetalleCampo etiqueta="Contacto" valor={detalleMobile.contacto} />
+            <DetalleCampo etiqueta="Observaciones" valor={detalleMobile.observaciones} />
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }
