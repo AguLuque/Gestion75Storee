@@ -8,6 +8,7 @@ import gastoRoutes from "./gasto.routes.js";
 import varianteRoutes from "./variante.routes.js";
 import varianteAnidadaRoutes from "./variante-por-producto.routes.js";
 import deudorRoutes from "./deudor.routes.js";
+import cuentaDineroRoutes from "./cuentaDinero.routes.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -23,5 +24,6 @@ router.use("/gastos", gastoRoutes);
 router.use("/variantes", varianteRoutes);
 router.use("/productos/:producto_id/variantes", varianteAnidadaRoutes);
 router.use("/deudores", deudorRoutes);
+router.use("/cuentas-dinero", cuentaDineroRoutes);
 
 export default router;
