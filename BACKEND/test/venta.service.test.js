@@ -222,3 +222,34 @@ test("un canal inválido es rechazado", async () => {
     (err) => err.status === 400
   );
 });
+
+test("una venta cobrada genera un movimiento financiero de ingreso", async () => {
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista",
+    metodo_pago: "efectivo",
+    cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 1 }],
+    usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 1);
+  assert.equal(movs[0].tipo, "ingreso");
+  assert.equal(movs[0].categoria, "venta_productos");
+  assert.equal(Number(movs[0].monto), Number(venta.total));
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});

@@ -11,6 +11,7 @@
 import VentaModel from "../models/venta.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
+import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 const CANALES_VALIDOS = ["directa", "mercadolibre"];
@@ -23,11 +24,13 @@ const CANALES_VALIDOS = ["directa", "mercadolibre"];
  *   metodo_pago: 'efectivo'|'transferencia'|'tarjeta'|'otro'|undefined,
  *   canal: 'directa'|'mercadolibre'|undefined,
  *   comision: número (ej. comisión de MercadoLibre) descontado de la ganancia|undefined,
+ *   cuenta_dinero_id: opcional — si se indica, genera automáticamente el movimiento
+ *     financiero de ingreso correspondiente a la venta dentro de la misma transacción,
  *   items: [{ producto_id, cantidad, variante_id? }]
  * }
  * @returns {Object} - La venta creada con sus ítems y ganancia
  */
-const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, items, usuario_id }) => {
+const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, cuenta_dinero_id, items, usuario_id }) => {
   // Validaciones básicas
   if (!tipo || !["minorista", "mayorista"].includes(tipo)) {
     throw { status: 400, message: "El tipo de venta debe ser 'minorista' o 'mayorista'." };
@@ -160,6 +163,24 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, i
       comision: comisionNumerica,
       usuario_id,
     });
+
+    // Genera el movimiento financiero automáticamente solo si la venta se cobra
+    // en el momento (comportamiento actual, estado_cobro default 'cobrado').
+    // Si en el futuro se pasa estado_cobro pendiente/parcial, esto se resuelve
+    // en la Etapa 2 (cuentas por cobrar) — acá no se genera movimiento todavía.
+    if (cuenta_dinero_id) {
+      await MovimientoFinancieroModel.createEnTransaccion(client, {
+        fecha: venta.fecha,
+        tipo: "ingreso",
+        categoria: "venta_productos",
+        monto: total,
+        cuenta_dinero_id,
+        origen_tipo: "venta",
+        origen_id: venta.id,
+        descripcion: `Venta #${venta.id}`,
+        usuario_id,
+      });
+    }
 
     // Insertar ítems y descontar stock
     const itemsCreados = [];
