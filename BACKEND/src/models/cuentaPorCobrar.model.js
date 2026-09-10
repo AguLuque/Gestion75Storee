@@ -57,7 +57,7 @@ const CuentaPorCobrarModel = {
       throw { status: 400, message: `El cobro (${monto}) supera el saldo pendiente (${filaActual[0].saldo_pendiente}).` };
     }
 
-    const nuevoSaldo = Number(filaActual[0].saldo_pendiente) - Number(monto);
+    const nuevoSaldo = Math.round((Number(filaActual[0].saldo_pendiente) - Number(monto)) * 100) / 100;
     const nuevoEstado = nuevoSaldo === 0 ? "cobrado" : "parcial";
 
     const { rows } = await client.query(

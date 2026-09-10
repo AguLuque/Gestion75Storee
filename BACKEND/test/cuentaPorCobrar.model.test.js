@@ -95,6 +95,27 @@ test("un cobro mayor al saldo pendiente es rechazado", async () => {
   }
 });
 
+test("una secuencia de cobros parciales cuya suma exacta cubre el total termina en estado cobrado con saldo cero", async () => {
+  const cxc = await CuentaPorCobrarModel.create({
+    venta_id: null, cliente_nombre: `${MARCA} cliente`, monto_total: 1000.00,
+    fecha_emision: "2026-01-10", fecha_vencimiento: null, usuario_id: REAL_UID,
+  });
+  cuentasCreadas.push(cxc.id);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await CuentaPorCobrarModel.registrarCobroEnTransaccion(client, cxc.id, 333.33, REAL_UID);
+    await CuentaPorCobrarModel.registrarCobroEnTransaccion(client, cxc.id, 333.33, REAL_UID);
+    const actualizada = await CuentaPorCobrarModel.registrarCobroEnTransaccion(client, cxc.id, 333.34, REAL_UID);
+    await client.query("COMMIT");
+    assert.equal(actualizada.estado, "cobrado");
+    assert.equal(Number(actualizada.saldo_pendiente), 0);
+  } finally {
+    client.release();
+  }
+});
+
 test("getTotalPendiente suma el saldo_pendiente de todas las cuentas no cobradas del usuario", async () => {
   const c1 = await CuentaPorCobrarModel.create({
     venta_id: null, cliente_nombre: `${MARCA} cliente 1`, monto_total: 300,
