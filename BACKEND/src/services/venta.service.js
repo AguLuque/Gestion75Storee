@@ -13,6 +13,7 @@ import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
+import { CATEGORIAS_INGRESO, CATEGORIAS_COSTO } from "../constants/finanzas.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 const CANALES_VALIDOS = ["directa", "mercadolibre"];
@@ -178,7 +179,7 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
       await MovimientoFinancieroModel.createEnTransaccion(client, {
         fecha: venta.fecha,
         tipo: "ingreso",
-        categoria: "venta_productos",
+        categoria: CATEGORIAS_INGRESO.VENTA_PRODUCTOS,
         monto: total,
         cuenta_dinero_id,
         origen_tipo: "venta",
@@ -186,6 +187,20 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
         descripcion: `Venta #${venta.id}`,
         usuario_id,
       });
+
+      if (comisionNumerica > 0) {
+        await MovimientoFinancieroModel.createEnTransaccion(client, {
+          fecha: venta.fecha,
+          tipo: "egreso",
+          categoria: CATEGORIAS_COSTO.COMISIONES,
+          monto: comisionNumerica,
+          cuenta_dinero_id,
+          origen_tipo: "venta",
+          origen_id: venta.id,
+          descripcion: `Comisión venta #${venta.id}`,
+          usuario_id,
+        });
+      }
     }
 
     // Insertar ítems y descontar stock

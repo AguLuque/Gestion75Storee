@@ -307,3 +307,35 @@ test("una venta con cuenta_dinero_id inexistente es rechazada", async () => {
   const pTras = await ProductoModel.getById(p.id, REAL_UID);
   assert.equal(Number(pTras.stock_actual), 5, "el stock no debe cambiar si la cuenta de dinero no existe");
 });
+
+test("una venta por MercadoLibre con cuenta de dinero genera movimiento de ingreso y de comision por separado", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_compra: 100, precio_minorista: 200 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta ml`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", canal: "mercadolibre", comision: 30, cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1 ORDER BY categoria`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 2);
+  const ingreso = movs.find((m) => m.categoria === "venta_productos");
+  const comisionMov = movs.find((m) => m.categoria === "comisiones");
+  assert.ok(ingreso && comisionMov);
+  assert.equal(ingreso.tipo, "ingreso");
+  assert.equal(Number(ingreso.monto), 200, "el ingreso registra el total de la venta, no el neto");
+  assert.equal(comisionMov.tipo, "egreso");
+  assert.equal(Number(comisionMov.monto), 30);
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
