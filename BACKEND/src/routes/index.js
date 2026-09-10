@@ -9,6 +9,8 @@ import varianteRoutes from "./variante.routes.js";
 import varianteAnidadaRoutes from "./variante-por-producto.routes.js";
 import deudorRoutes from "./deudor.routes.js";
 import cuentaDineroRoutes from "./cuentaDinero.routes.js";
+import cuentaPorCobrarRoutes from "./cuentaPorCobrar.routes.js";
+import cuentaPorPagarRoutes from "./cuentaPorPagar.routes.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -25,5 +27,7 @@ router.use("/variantes", varianteRoutes);
 router.use("/productos/:producto_id/variantes", varianteAnidadaRoutes);
 router.use("/deudores", deudorRoutes);
 router.use("/cuentas-dinero", cuentaDineroRoutes);
+router.use("/cuentas-por-cobrar", cuentaPorCobrarRoutes);
+router.use("/cuentas-por-pagar", cuentaPorPagarRoutes);
 
 export default router;
