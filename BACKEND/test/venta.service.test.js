@@ -308,6 +308,52 @@ test("anular una venta sin movimientos financieros no genera ninguno nuevo", asy
   assert.equal(movs.length, 0);
 });
 
+test("anular una venta con comision de MercadoLibre revierte ambos movimientos (ingreso y egreso)", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_compra: 100, precio_minorista: 200 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',1000,$2) RETURNING id`,
+    [`${MARCA} cuenta ml reversion`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", canal: "mercadolibre", comision: 30, cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  await VentaService.eliminarVenta(venta.id, REAL_UID);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1 ORDER BY id`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 4, "2 movimientos originales + 2 compensatorios");
+
+  const originales = movs.filter((m) =>
+    m.descripcion && !m.descripcion.includes("Reversión")
+  );
+  const compensatorios = movs.filter((m) =>
+    m.descripcion && m.descripcion.includes("Reversión")
+  );
+  assert.equal(originales.length, 2);
+  assert.equal(compensatorios.length, 2);
+
+  for (const original of originales) {
+    const compensatorio = compensatorios.find((c) => c.categoria === original.categoria);
+    assert.ok(compensatorio, `debe existir una reversión para la categoría ${original.categoria}`);
+    assert.notEqual(compensatorio.tipo, original.tipo, "el tipo de la reversión debe ser el opuesto");
+    assert.equal(Number(compensatorio.monto), Number(original.monto), "el monto de la reversión debe ser igual al original");
+  }
+
+  const saldoTrasAnular = await CuentaDineroModel.getSaldo(cuenta_dinero_id, REAL_UID);
+  assert.equal(Number(saldoTrasAnular), 1000, "el saldo debe volver exactamente al inicial (venta + comision + ambas reversiones se anulan)");
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
 test("una venta con cuenta_dinero_id de otro usuario es rechazada y no crea venta ni movimiento", async () => {
   const cuentaAjena = await pool.query(
     `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
