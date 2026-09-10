@@ -8,6 +8,7 @@ dotenv.config();
 
 import pool from "../src/config/db.js";
 import ProductoModel from "../src/models/producto.model.js";
+import CuentaDineroModel from "../src/models/cuentaDinero.model.js";
 import CompraService from "../src/services/compra.service.js";
 
 const MARCA = "__TEST_AUDITORIA__";
@@ -202,6 +203,68 @@ test("una compra con cuenta de dinero genera movimiento de costo de mercaderia y
   assert.equal(Number(flete.monto), 500);
   assert.equal(costoMercaderia.tipo, "egreso");
   assert.equal(Number(costoMercaderia.monto), 120);
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`, [compra.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("editar una compra con movimientos revierte los viejos y crea nuevos con el monto actualizado", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta edicion`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, costo_envio: 100, cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 2, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  await CompraService.editarCompra(compra.id, {
+    proveedor_id: null, costo_envio: 50, cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 5, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1 ORDER BY id`,
+    [compra.id]
+  );
+  // 2 originales (mercaderia + flete) + 2 reversiones + 2 nuevos = 6
+  assert.equal(movs.length, 6);
+
+  const saldo = await CuentaDineroModel.getSaldo(cuenta_dinero_id, REAL_UID);
+  // saldo final = -(5*40) - 50 = -250 (solo cuenta lo vigente tras la edicion)
+  assert.equal(Number(saldo), -250);
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`, [compra.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("editar una compra sin volver a pasar cuenta_dinero_id revierte los movimientos viejos y no crea nuevos", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta edicion sin cuenta`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 1, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  await CompraService.editarCompra(compra.id, {
+    proveedor_id: null,
+    items: [{ producto_id: p.id, cantidad: 2, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+
+  const saldo = await CuentaDineroModel.getSaldo(cuenta_dinero_id, REAL_UID);
+  assert.equal(Number(saldo), 0, "sin cuenta_dinero_id en la edicion, el efecto en caja queda revertido y no se recrea");
 
   await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`, [compra.id]);
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);

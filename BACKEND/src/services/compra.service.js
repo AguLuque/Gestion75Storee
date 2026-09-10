@@ -3,6 +3,7 @@ import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
+import { CATEGORIAS_COSTO } from "../constants/finanzas.js";
 
 const TIPOS_COMPRA_VALIDOS = ["local", "nacional", "internacional"];
 
@@ -102,7 +103,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
       await MovimientoFinancieroModel.createEnTransaccion(client, {
         fecha: compra.fecha,
         tipo: "egreso",
-        categoria: "costo_mercaderia",
+        categoria: CATEGORIAS_COSTO.COSTO_MERCADERIA,
         monto: total,
         cuenta_dinero_id,
         origen_tipo: "compra",
@@ -116,7 +117,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
         await MovimientoFinancieroModel.createEnTransaccion(client, {
           fecha: compra.fecha,
           tipo: "egreso",
-          categoria: "flete",
+          categoria: CATEGORIAS_COSTO.FLETE,
           monto: costoEnvioNumerico,
           cuenta_dinero_id,
           origen_tipo: "compra",
@@ -137,7 +138,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
   }
 };
 
-const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio, items, usuario_id }) => {
+const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, items, usuario_id }) => {
   validarCabecera({ tipo, costo_envio });
   validarItems(items);
 
@@ -188,6 +189,59 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
         await VarianteModel.updateStock(item.variante_id, item.cantidad, client);
       } else {
         await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
+      }
+    }
+
+    const { rows: movimientosOriginales } = await client.query(
+      `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1 AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
+    for (const mov of movimientosOriginales) {
+      await MovimientoFinancieroModel.createEnTransaccion(client, {
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
+        categoria: mov.categoria,
+        monto: mov.monto,
+        cuenta_dinero_id: mov.cuenta_dinero_id,
+        origen_tipo: "compra",
+        origen_id: id,
+        descripcion: `Reversión por edición de compra #${id}`,
+        usuario_id,
+      });
+    }
+
+    if (cuenta_dinero_id) {
+      const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
+      if (!cuenta) {
+        throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };
+      }
+
+      await MovimientoFinancieroModel.createEnTransaccion(client, {
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: "egreso",
+        categoria: CATEGORIAS_COSTO.COSTO_MERCADERIA,
+        monto: total,
+        cuenta_dinero_id,
+        origen_tipo: "compra",
+        origen_id: id,
+        descripcion: `Compra #${id} (editada)`,
+        usuario_id,
+      });
+
+      const costoEnvioNumerico = Number(costo_envio) || 0;
+      if (costoEnvioNumerico > 0) {
+        await MovimientoFinancieroModel.createEnTransaccion(client, {
+          fecha: new Date().toISOString().slice(0, 10),
+          tipo: "egreso",
+          categoria: CATEGORIAS_COSTO.FLETE,
+          monto: costoEnvioNumerico,
+          cuenta_dinero_id,
+          origen_tipo: "compra",
+          origen_id: id,
+          descripcion: `Flete compra #${id} (editada)`,
+          usuario_id,
+        });
       }
     }
 
