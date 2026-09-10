@@ -3,16 +3,21 @@ import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
+import CuentaPorPagarModel from "../models/cuentaPorPagar.model.js";
 import { CATEGORIAS_COSTO } from "../constants/finanzas.js";
 
 const TIPOS_COMPRA_VALIDOS = ["local", "nacional", "internacional"];
+const ESTADOS_PAGO_VALIDOS = ["pagado", "pendiente"];
 
-const validarCabecera = ({ tipo, costo_envio }) => {
+const validarCabecera = ({ tipo, costo_envio, estado_pago }) => {
   if (tipo && !TIPOS_COMPRA_VALIDOS.includes(tipo)) {
     throw { status: 400, message: `tipo debe ser uno de: ${TIPOS_COMPRA_VALIDOS.join(", ")}.` };
   }
   if (costo_envio !== undefined && costo_envio !== null && Number(costo_envio) < 0) {
     throw { status: 400, message: "El costo de envío no puede ser negativo." };
+  }
+  if (estado_pago && !ESTADOS_PAGO_VALIDOS.includes(estado_pago)) {
+    throw { status: 400, message: `estado_pago debe ser uno de: ${ESTADOS_PAGO_VALIDOS.join(", ")}.` };
   }
 };
 
@@ -59,8 +64,8 @@ const verificarPropiedad = async (client, item, usuario_id) => {
   }
 };
 
-const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, items, usuario_id }) => {
-  validarCabecera({ tipo, costo_envio });
+const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, estado_pago, items, usuario_id }) => {
+  validarCabecera({ tipo, costo_envio, estado_pago });
   validarItems(items);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
@@ -74,7 +79,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
     }
 
     const compra = await CompraModel.insertCabecera(client, {
-      proveedor_id, total, observaciones, tipo, costo_envio, usuario_id,
+      proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id,
     });
     const itemsCreados = [];
     for (const item of items) {
@@ -94,7 +99,16 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
       }
     }
 
-    if (cuenta_dinero_id) {
+    if (compra.estado_pago === "pendiente") {
+      await CuentaPorPagarModel.createEnTransaccion(client, {
+        compra_id: compra.id,
+        proveedor_id: proveedor_id ?? null,
+        monto_total: total + (Number(costo_envio) || 0),
+        fecha_emision: compra.fecha,
+        fecha_vencimiento: null,
+        usuario_id,
+      });
+    } else if (cuenta_dinero_id) {
       const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
       if (!cuenta) {
         throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };

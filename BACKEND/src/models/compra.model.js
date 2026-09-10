@@ -50,11 +50,11 @@ const CompraModel = {
     return rows[0] || null;
   },
 
-  insertCabecera: async (client, { proveedor_id, total, observaciones, tipo, costo_envio, usuario_id }) => {
+  insertCabecera: async (client, { proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id }) => {
     const { rows } = await client.query(
-      `INSERT INTO compras (proveedor_id, total, observaciones, tipo, costo_envio, usuario_id)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, usuario_id]
+      `INSERT INTO compras (proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, estado_pago || "pagado", usuario_id]
     );
     return rows[0];
   },
