@@ -18,6 +18,7 @@ import { CATEGORIAS_INGRESO, CATEGORIAS_COSTO } from "../constants/finanzas.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 const CANALES_VALIDOS = ["directa", "mercadolibre"];
+const ESTADOS_COBRO_VALIDOS = ["cobrado", "pendiente"];
 
 /**
  * Crea una venta completa con múltiples productos en una sola transacción.
@@ -53,6 +54,10 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
 
   if (comision !== undefined && comision !== null && Number(comision) < 0) {
     throw { status: 400, message: "La comisión no puede ser negativa." };
+  }
+
+  if (estado_cobro && !ESTADOS_COBRO_VALIDOS.includes(estado_cobro)) {
+    throw { status: 400, message: `estado_cobro debe ser uno de: ${ESTADOS_COBRO_VALIDOS.join(", ")}.` };
   }
 
   if (!items || !Array.isArray(items) || items.length === 0) {

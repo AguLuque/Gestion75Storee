@@ -483,3 +483,65 @@ test("una venta con estado_cobro cobrado (el default) sigue sin generar cuenta p
   const { rows: cxc } = await pool.query(`SELECT * FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
   assert.equal(cxc.length, 0);
 });
+
+test("un estado_cobro inválido (ej. 'parcial') es rechazado y no crea venta ni movimiento ni cuenta por cobrar", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  const { rows: countAntesRows } = await pool.query(`SELECT COUNT(*) FROM ventas WHERE usuario_id = $1`, [REAL_UID]);
+  const countAntes = countAntesRows[0].count;
+
+  await assert.rejects(
+    () => VentaService.crearVenta({
+      tipo: "minorista", estado_cobro: "parcial",
+      items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+    }),
+    (err) => err.status === 400
+  );
+
+  const { rows: countDespuesRows } = await pool.query(`SELECT COUNT(*) FROM ventas WHERE usuario_id = $1`, [REAL_UID]);
+  assert.equal(countDespuesRows[0].count, countAntes, "no debe crear ninguna venta si estado_cobro es inválido");
+
+  const pTras = await ProductoModel.getById(p.id, REAL_UID);
+  assert.equal(Number(pTras.stock_actual), 5, "el stock no debe cambiar si estado_cobro es inválido");
+});
+
+test("una venta pendiente con canal mercadolibre, comision y cuenta_dinero_id no genera movimientos, solo cuenta por cobrar", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_compra: 100, precio_minorista: 200 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta pendiente ml`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista",
+    estado_cobro: "pendiente",
+    canal: "mercadolibre",
+    comision: 30,
+    cuenta_dinero_id,
+    cliente_nombre: `${MARCA} cliente credito ml`,
+    items: [{ producto_id: p.id, cantidad: 1 }],
+    usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  assert.equal(venta.estado_cobro, "pendiente");
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 0, "una venta pendiente con comision y cuenta_dinero_id no debe generar ningún movimiento");
+
+  const { rows: cxc } = await pool.query(
+    `SELECT * FROM cuentas_por_cobrar WHERE venta_id = $1`,
+    [venta.id]
+  );
+  assert.equal(cxc.length, 1);
+  assert.equal(Number(cxc[0].monto_total), 200);
+  assert.equal(Number(cxc[0].saldo_pendiente), 200);
+
+  await pool.query(`DELETE FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
