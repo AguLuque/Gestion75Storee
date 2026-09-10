@@ -70,11 +70,11 @@ const VentaModel = {
   },
 
   // Insertar cabecera de venta (dentro de una transacción)
-  insertCabecera: async (client, { tipo, total, ganancia, observaciones, metodo_pago, canal, comision, usuario_id }) => {
+  insertCabecera: async (client, { tipo, total, ganancia, observaciones, metodo_pago, canal, comision, estado_cobro, usuario_id }) => {
     const { rows } = await client.query(
-      `INSERT INTO ventas (tipo, total, ganancia, observaciones, metodo_pago, canal, comision, usuario_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [tipo, total, ganancia, observaciones ?? null, metodo_pago ?? null, canal || "directa", comision ?? 0, usuario_id]
+      `INSERT INTO ventas (tipo, total, ganancia, observaciones, metodo_pago, canal, comision, estado_cobro, usuario_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [tipo, total, ganancia, observaciones ?? null, metodo_pago ?? null, canal || "directa", comision ?? 0, estado_cobro || "cobrado", usuario_id]
     );
     return rows[0];
   },

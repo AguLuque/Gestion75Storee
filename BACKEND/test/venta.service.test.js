@@ -439,3 +439,47 @@ test("una venta por MercadoLibre con cuenta de dinero genera movimiento de ingre
   await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
 });
+
+test("una venta a credito no genera movimiento pero genera una cuenta por cobrar por el total", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_compra: 50, precio_minorista: 300 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", estado_cobro: "pendiente", cliente_nombre: `${MARCA} cliente credito`,
+    items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  assert.equal(venta.estado_cobro, "pendiente");
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 0, "una venta pendiente de cobro no debe mover caja");
+
+  const { rows: cxc } = await pool.query(
+    `SELECT * FROM cuentas_por_cobrar WHERE venta_id = $1`,
+    [venta.id]
+  );
+  assert.equal(cxc.length, 1);
+  assert.equal(Number(cxc[0].monto_total), 300);
+  assert.equal(Number(cxc[0].saldo_pendiente), 300);
+  assert.equal(cxc[0].estado, "pendiente");
+  assert.equal(cxc[0].cliente_nombre, `${MARCA} cliente credito`);
+
+  await pool.query(`DELETE FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
+});
+
+test("una venta con estado_cobro cobrado (el default) sigue sin generar cuenta por cobrar", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  assert.equal(venta.estado_cobro, "cobrado");
+
+  const { rows: cxc } = await pool.query(`SELECT * FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
+  assert.equal(cxc.length, 0);
+});

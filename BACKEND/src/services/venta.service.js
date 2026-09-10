@@ -13,6 +13,7 @@ import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
+import CuentaPorCobrarModel from "../models/cuentaPorCobrar.model.js";
 import { CATEGORIAS_INGRESO, CATEGORIAS_COSTO } from "../constants/finanzas.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
@@ -28,11 +29,15 @@ const CANALES_VALIDOS = ["directa", "mercadolibre"];
  *   comision: número (ej. comisión de MercadoLibre) descontado de la ganancia|undefined,
  *   cuenta_dinero_id: opcional — si se indica, genera automáticamente el movimiento
  *     financiero de ingreso correspondiente a la venta dentro de la misma transacción,
+ *   estado_cobro: 'cobrado' (default, comportamiento actual sin cambios) | 'pendiente'
+ *     (venta a crédito: no genera movimiento financiero, en cambio genera una fila
+ *     en cuentas_por_cobrar por el total)|undefined,
+ *   cliente_nombre, fecha_vencimiento: solo relevantes si estado_cobro es 'pendiente',
  *   items: [{ producto_id, cantidad, variante_id? }]
  * }
  * @returns {Object} - La venta creada con sus ítems y ganancia
  */
-const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, cuenta_dinero_id, items, usuario_id }) => {
+const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, cuenta_dinero_id, estado_cobro, cliente_nombre, fecha_vencimiento, items, usuario_id }) => {
   // Validaciones básicas
   if (!tipo || !["minorista", "mayorista"].includes(tipo)) {
     throw { status: 400, message: "El tipo de venta debe ser 'minorista' o 'mayorista'." };
@@ -163,14 +168,25 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
       metodo_pago,
       canal,
       comision: comisionNumerica,
+      estado_cobro,
       usuario_id,
     });
 
-    // Genera el movimiento financiero automáticamente solo si la venta se cobra
-    // en el momento (comportamiento actual, estado_cobro default 'cobrado').
-    // Si en el futuro se pasa estado_cobro pendiente/parcial, esto se resuelve
-    // en la Etapa 2 (cuentas por cobrar) — acá no se genera movimiento todavía.
-    if (cuenta_dinero_id) {
+    // Si la venta es a crédito (estado_cobro 'pendiente'), todavía no hay caja
+    // involucrada: en vez de un movimiento financiero se genera una cuenta por
+    // cobrar por el total. Si la venta se cobra en el momento (comportamiento
+    // actual, estado_cobro default 'cobrado'), se genera el movimiento de
+    // ingreso automáticamente (y el de comisión si corresponde).
+    if (venta.estado_cobro === "pendiente") {
+      await CuentaPorCobrarModel.createEnTransaccion(client, {
+        venta_id: venta.id,
+        cliente_nombre: cliente_nombre ?? null,
+        monto_total: total,
+        fecha_emision: venta.fecha,
+        fecha_vencimiento: fecha_vencimiento ?? null,
+        usuario_id,
+      });
+    } else if (cuenta_dinero_id) {
       const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
       if (!cuenta) {
         throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };
