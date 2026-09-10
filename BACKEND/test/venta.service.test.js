@@ -14,6 +14,7 @@ dotenv.config();
 
 import pool from "../src/config/db.js";
 import ProductoModel from "../src/models/producto.model.js";
+import CuentaDineroModel from "../src/models/cuentaDinero.model.js";
 import VentaService from "../src/services/venta.service.js";
 
 const MARCA = "__TEST_AUDITORIA__";
@@ -252,6 +253,59 @@ test("una venta cobrada genera un movimiento financiero de ingreso", async () =>
 
   await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("anular una venta con movimientos genera movimientos compensatorios y el saldo de la cuenta vuelve al original", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_compra: 50, precio_minorista: 100 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',1000,$2) RETURNING id`,
+    [`${MARCA} cuenta reversion`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 2 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  const saldoTrasVenta = await CuentaDineroModel.getSaldo(cuenta_dinero_id, REAL_UID);
+  assert.equal(Number(saldoTrasVenta), 1000 + 200);
+
+  await VentaService.eliminarVenta(venta.id, REAL_UID);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1 ORDER BY id`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 2, "el movimiento original mas su reversion");
+  assert.equal(movs[0].tipo, "ingreso");
+  assert.equal(movs[1].tipo, "egreso");
+  assert.equal(Number(movs[1].monto), Number(movs[0].monto));
+
+  const saldoTrasAnular = await CuentaDineroModel.getSaldo(cuenta_dinero_id, REAL_UID);
+  assert.equal(Number(saldoTrasAnular), 1000, "el saldo debe volver exactamente al inicial");
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("anular una venta sin movimientos financieros no genera ninguno nuevo", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  await VentaService.eliminarVenta(venta.id, REAL_UID);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`,
+    [venta.id]
+  );
+  assert.equal(movs.length, 0);
 });
 
 test("una venta con cuenta_dinero_id de otro usuario es rechazada y no crea venta ni movimiento", async () => {

@@ -263,6 +263,25 @@ const eliminarVenta = async (id, usuario_id) => {
       await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
     }
 
+    const { rows: movimientosOriginales } = await client.query(
+      `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1 AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
+    for (const mov of movimientosOriginales) {
+      await MovimientoFinancieroModel.createEnTransaccion(client, {
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
+        categoria: mov.categoria,
+        monto: mov.monto,
+        cuenta_dinero_id: mov.cuenta_dinero_id,
+        origen_tipo: "venta",
+        origen_id: id,
+        descripcion: `Reversión por anulación de venta #${id}`,
+        usuario_id,
+      });
+    }
+
     const { rows: ventaEliminada } = await client.query(
       `UPDATE ventas SET activo = false WHERE id = $1 RETURNING id, total, fecha`,
       [id]
