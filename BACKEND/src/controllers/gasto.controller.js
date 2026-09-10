@@ -3,6 +3,7 @@
 import GastoModel from "../models/gasto.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
+import { normalizarCategoriaGasto } from "../constants/finanzas.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 
@@ -55,7 +56,7 @@ const GastoController = {
         await MovimientoFinancieroModel.create({
           fecha: gasto.fecha,
           tipo: "egreso",
-          categoria: gasto.categoria || "otros_gastos",
+          categoria: normalizarCategoriaGasto(gasto.categoria),
           monto: gasto.monto,
           cuenta_dinero_id,
           origen_tipo: "gasto",

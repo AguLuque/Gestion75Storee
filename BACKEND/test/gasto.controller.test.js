@@ -63,7 +63,7 @@ test("crear un gasto con cuenta_dinero_id genera un movimiento financiero de egr
   );
   assert.equal(movs.length, 1);
   assert.equal(movs[0].tipo, "egreso");
-  assert.equal(movs[0].categoria, "Alquiler");
+  assert.equal(movs[0].categoria, "alquiler");
   assert.equal(Number(movs[0].monto), 1500);
 });
 
