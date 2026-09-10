@@ -2,6 +2,7 @@
 
 import GastoModel from "../models/gasto.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import CuentaDineroModel from "../models/cuentaDinero.model.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 
@@ -36,10 +37,18 @@ const GastoController = {
     try {
       const { descripcion, monto, categoria, metodo_pago, cuenta_dinero_id } = req.body;
       if (!descripcion || monto === undefined) return res.status(400).json({ success: false, error: "descripcion y monto son requeridos." });
-      if (monto < 0) return res.status(400).json({ success: false, error: "El monto no puede ser negativo." });
+      if (monto <= 0) return res.status(400).json({ success: false, error: "El monto debe ser mayor a 0." });
       if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
         return res.status(400).json({ success: false, error: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` });
       }
+
+      if (cuenta_dinero_id) {
+        const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, req.usuario_id);
+        if (!cuenta) {
+          return res.status(400).json({ success: false, error: "La cuenta de dinero indicada no existe o no pertenece al usuario." });
+        }
+      }
+
       const gasto = await GastoModel.create({ descripcion, monto, categoria, metodo_pago, usuario_id: req.usuario_id });
 
       if (cuenta_dinero_id) {

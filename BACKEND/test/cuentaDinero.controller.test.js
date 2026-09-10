@@ -12,6 +12,7 @@ const MARCA = "__TEST_AJUSTE__";
 let REAL_UID;
 let cuentaDineroId;
 let cuentaDineroIdConSaldoInicial;
+const movimientosCreados = [];
 
 before(async () => {
   const { rows } = await pool.query(
@@ -36,7 +37,9 @@ before(async () => {
 });
 
 after(async () => {
-  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'ajuste_manual' AND usuario_id = $1`, [REAL_UID]);
+  for (const id of movimientosCreados) {
+    await pool.query(`DELETE FROM movimientos_financieros WHERE id = $1`, [id]).catch(() => {});
+  }
   await pool.query(`DELETE FROM cuentas_dinero WHERE id IN ($1, $2)`, [cuentaDineroId, cuentaDineroIdConSaldoInicial]);
   await pool.end();
 });
@@ -65,6 +68,7 @@ test("crear ajuste de ingreso crea movimiento_financiero con tipo ingreso y orig
   assert.equal(getStatus(), 201, "Debería devolver 201");
   const movimiento = getJson().data;
   assert.ok(movimiento.id, "Debería retornar el movimiento creado");
+  movimientosCreados.push(movimiento.id);
   assert.equal(movimiento.tipo, "ingreso");
   assert.equal(movimiento.categoria, "ajuste_manual");
   assert.equal(movimiento.origen_tipo, "ajuste_manual");
@@ -89,6 +93,7 @@ test("crear ajuste de egreso crea movimiento_financiero con tipo egreso y origen
   assert.equal(getStatus(), 201, "Debería devolver 201");
   const movimiento = getJson().data;
   assert.ok(movimiento.id, "Debería retornar el movimiento creado");
+  movimientosCreados.push(movimiento.id);
   assert.equal(movimiento.tipo, "egreso");
   assert.equal(movimiento.categoria, "ajuste_manual");
   assert.equal(movimiento.origen_tipo, "ajuste_manual");
@@ -160,5 +165,6 @@ test("usa descripción por defecto si no se proporciona", async () => {
   await CuentaDineroController.crearAjuste(req, res, (err) => { throw err; });
 
   const movimiento = getJson().data;
+  movimientosCreados.push(movimiento.id);
   assert.equal(movimiento.descripcion, "Ajuste manual de saldo");
 });

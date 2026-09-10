@@ -253,3 +253,57 @@ test("una venta cobrada genera un movimiento financiero de ingreso", async () =>
   await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1`, [venta.id]);
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
 });
+
+test("una venta con cuenta_dinero_id de otro usuario es rechazada y no crea venta ni movimiento", async () => {
+  const cuentaAjena = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta ajena`, OTRO_UID]
+  );
+  const cuenta_dinero_id = cuentaAjena.rows[0].id;
+
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  const { rows: countAntesRows } = await pool.query(`SELECT COUNT(*) FROM ventas WHERE usuario_id = $1`, [REAL_UID]);
+  const countAntes = countAntesRows[0].count;
+
+  await assert.rejects(
+    () => VentaService.crearVenta({
+      tipo: "minorista",
+      cuenta_dinero_id,
+      items: [{ producto_id: p.id, cantidad: 1 }],
+      usuario_id: REAL_UID,
+    }),
+    (err) => err.status === 400
+  );
+
+  const pTras = await ProductoModel.getById(p.id, REAL_UID);
+  assert.equal(Number(pTras.stock_actual), 5, "el stock no debe cambiar si la cuenta de dinero es ajena");
+
+  const { rows: countDespuesRows } = await pool.query(`SELECT COUNT(*) FROM ventas WHERE usuario_id = $1`, [REAL_UID]);
+  assert.equal(countDespuesRows[0].count, countAntes, "no debe crear ninguna venta si la cuenta de dinero es ajena");
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE cuenta_dinero_id = $1`,
+    [cuenta_dinero_id]
+  );
+  assert.equal(movs.length, 0, "no debe crear ningún movimiento");
+
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("una venta con cuenta_dinero_id inexistente es rechazada", async () => {
+  const p = await productoDePrueba({ stock_actual: 5 });
+
+  await assert.rejects(
+    () => VentaService.crearVenta({
+      tipo: "minorista",
+      cuenta_dinero_id: 9999999,
+      items: [{ producto_id: p.id, cantidad: 1 }],
+      usuario_id: REAL_UID,
+    }),
+    (err) => err.status === 400
+  );
+
+  const pTras = await ProductoModel.getById(p.id, REAL_UID);
+  assert.equal(Number(pTras.stock_actual), 5, "el stock no debe cambiar si la cuenta de dinero no existe");
+});

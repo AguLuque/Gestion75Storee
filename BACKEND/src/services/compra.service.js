@@ -2,6 +2,7 @@ import CompraModel from "../models/compra.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import CuentaDineroModel from "../models/cuentaDinero.model.js";
 
 const TIPOS_COMPRA_VALIDOS = ["local", "nacional", "internacional"];
 
@@ -93,6 +94,11 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
     }
 
     if (cuenta_dinero_id) {
+      const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
+      if (!cuenta) {
+        throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };
+      }
+
       await MovimientoFinancieroModel.createEnTransaccion(client, {
         fecha: compra.fecha,
         tipo: "egreso",

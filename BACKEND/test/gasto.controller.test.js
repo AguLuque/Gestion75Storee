@@ -8,6 +8,7 @@ import pool from "../src/config/db.js";
 import GastoController from "../src/controllers/gasto.controller.js";
 
 const MARCA = "__TEST_FINANZAS__";
+const OTRO_UID = "11111111-1111-1111-1111-111111111111";
 let REAL_UID;
 const gastosCreados = [];
 let cuentaDineroId;
@@ -81,4 +82,79 @@ test("crear un gasto sin cuenta_dinero_id no genera ningun movimiento", async ()
     [gasto.id]
   );
   assert.equal(movs.length, 0);
+});
+
+test("rechaza gasto con monto 0", async () => {
+  const { req, res, getStatus, getJson } = crearReqRes({
+    descripcion: `${MARCA} gasto monto cero`, monto: 0, categoria: "Otros", cuenta_dinero_id: cuentaDineroId,
+  });
+
+  const countAntes = (await pool.query(`SELECT COUNT(*) FROM gastos WHERE descripcion = $1`, [req.body.descripcion])).rows[0].count;
+
+  await GastoController.create(req, res, (err) => { throw err; });
+
+  assert.equal(getStatus(), 400);
+  assert.ok(getJson().error.includes("monto debe ser mayor a 0"));
+
+  const countDespues = (await pool.query(`SELECT COUNT(*) FROM gastos WHERE descripcion = $1`, [req.body.descripcion])).rows[0].count;
+  assert.equal(countDespues, countAntes, "no debe crear ninguna fila de gasto");
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE cuenta_dinero_id = $1 AND descripcion LIKE $2`,
+    [cuentaDineroId, `%${MARCA} gasto monto cero%`]
+  );
+  assert.equal(movs.length, 0, "no debe crear ningún movimiento");
+});
+
+test("rechaza gasto con monto negativo", async () => {
+  const { req, res, getStatus, getJson } = crearReqRes({
+    descripcion: `${MARCA} gasto monto negativo`, monto: -100, categoria: "Otros",
+  });
+
+  await GastoController.create(req, res, (err) => { throw err; });
+
+  assert.equal(getStatus(), 400);
+  assert.ok(getJson().error.includes("monto debe ser mayor a 0"));
+});
+
+test("rechaza gasto con cuenta_dinero_id de otro usuario y no crea gasto ni movimiento", async () => {
+  const cuentaAjena = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta ajena gasto`, OTRO_UID]
+  );
+  const cuentaAjenaId = cuentaAjena.rows[0].id;
+
+  const { req, res, getStatus, getJson } = crearReqRes({
+    descripcion: `${MARCA} gasto cuenta ajena`, monto: 500, categoria: "Otros", cuenta_dinero_id: cuentaAjenaId,
+  });
+
+  await GastoController.create(req, res, (err) => { throw err; });
+
+  assert.equal(getStatus(), 400);
+  assert.ok(getJson().error.includes("no existe o no pertenece al usuario"));
+
+  const { rows: gastos } = await pool.query(`SELECT * FROM gastos WHERE descripcion = $1`, [req.body.descripcion]);
+  assert.equal(gastos.length, 0, "no debe crear ningún gasto");
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE cuenta_dinero_id = $1`,
+    [cuentaAjenaId]
+  );
+  assert.equal(movs.length, 0, "no debe crear ningún movimiento");
+
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuentaAjenaId]);
+});
+
+test("rechaza gasto con cuenta_dinero_id inexistente y no crea gasto ni movimiento", async () => {
+  const { req, res, getStatus, getJson } = crearReqRes({
+    descripcion: `${MARCA} gasto cuenta inexistente`, monto: 500, categoria: "Otros", cuenta_dinero_id: 9999999,
+  });
+
+  await GastoController.create(req, res, (err) => { throw err; });
+
+  assert.equal(getStatus(), 400);
+  assert.ok(getJson().error.includes("no existe o no pertenece al usuario"));
+
+  const { rows: gastos } = await pool.query(`SELECT * FROM gastos WHERE descripcion = $1`, [req.body.descripcion]);
+  assert.equal(gastos.length, 0, "no debe crear ningún gasto");
 });

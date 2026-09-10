@@ -12,6 +12,7 @@ import VentaModel from "../models/venta.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import CuentaDineroModel from "../models/cuentaDinero.model.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 const CANALES_VALIDOS = ["directa", "mercadolibre"];
@@ -169,6 +170,11 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
     // Si en el futuro se pasa estado_cobro pendiente/parcial, esto se resuelve
     // en la Etapa 2 (cuentas por cobrar) — acá no se genera movimiento todavía.
     if (cuenta_dinero_id) {
+      const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
+      if (!cuenta) {
+        throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };
+      }
+
       await MovimientoFinancieroModel.createEnTransaccion(client, {
         fecha: venta.fecha,
         tipo: "ingreso",

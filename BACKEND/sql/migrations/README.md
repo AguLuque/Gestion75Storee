@@ -9,5 +9,5 @@ Cada archivo `NNN_descripcion.sql` se aplica UNA VEZ, a mano, en orden numérico
 Después de aplicar un archivo, anotar la fecha acá abajo:
 
 | Archivo | Aplicado el |
-|---|---|
-| 001_finanzas_base.sql | (pendiente) |
+| --- | --- |
+| 001_finanzas_base.sql | 2026-09-10 |
