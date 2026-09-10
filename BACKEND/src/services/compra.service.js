@@ -1,6 +1,7 @@
 import CompraModel from "../models/compra.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
+import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 
 const TIPOS_COMPRA_VALIDOS = ["local", "nacional", "internacional"];
 
@@ -56,7 +57,7 @@ const verificarPropiedad = async (client, item, usuario_id) => {
   }
 };
 
-const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, items, usuario_id }) => {
+const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, items, usuario_id }) => {
   validarCabecera({ tipo, costo_envio });
   validarItems(items);
 
@@ -88,6 +89,35 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, ite
         await VarianteModel.updateStock(item.variante_id, item.cantidad, client);
       } else {
         await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
+      }
+    }
+
+    if (cuenta_dinero_id) {
+      await MovimientoFinancieroModel.createEnTransaccion(client, {
+        fecha: compra.fecha,
+        tipo: "egreso",
+        categoria: "costo_mercaderia",
+        monto: total,
+        cuenta_dinero_id,
+        origen_tipo: "compra",
+        origen_id: compra.id,
+        descripcion: `Compra #${compra.id}`,
+        usuario_id,
+      });
+
+      const costoEnvioNumerico = Number(costo_envio) || 0;
+      if (costoEnvioNumerico > 0) {
+        await MovimientoFinancieroModel.createEnTransaccion(client, {
+          fecha: compra.fecha,
+          tipo: "egreso",
+          categoria: "flete",
+          monto: costoEnvioNumerico,
+          cuenta_dinero_id,
+          origen_tipo: "compra",
+          origen_id: compra.id,
+          descripcion: `Flete compra #${compra.id}`,
+          usuario_id,
+        });
       }
     }
 

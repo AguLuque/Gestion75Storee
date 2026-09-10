@@ -172,3 +172,65 @@ test("una compra sin tipo especificado queda como local por defecto", async () =
   assert.equal(compra.tipo, "local");
   assert.equal(Number(compra.costo_envio), 0);
 });
+
+test("una compra con cuenta de dinero genera movimiento de costo de mercaderia y flete", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta compra`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, costo_envio: 500,
+    cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 3, precio_unitario: 40 }],
+    usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1 ORDER BY categoria`,
+    [compra.id]
+  );
+  assert.equal(movs.length, 2);
+  const flete = movs.find((m) => m.categoria === "flete");
+  const costoMercaderia = movs.find((m) => m.categoria === "costo_mercaderia");
+  assert.ok(flete && costoMercaderia);
+  assert.equal(flete.tipo, "egreso");
+  assert.equal(Number(flete.monto), 500);
+  assert.equal(costoMercaderia.tipo, "egreso");
+  assert.equal(Number(costoMercaderia.monto), 120);
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`, [compra.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("una compra con cuenta de dinero pero sin costo de envio genera un solo movimiento", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta compra sin envio`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null,
+    cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 1, precio_unitario: 40 }],
+    usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  const { rows: movs } = await pool.query(
+    `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`,
+    [compra.id]
+  );
+  assert.equal(movs.length, 1);
+  assert.equal(movs[0].categoria, "costo_mercaderia");
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`, [compra.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});

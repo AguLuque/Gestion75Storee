@@ -1,6 +1,7 @@
 // src/controllers/gasto.controller.js
 
 import GastoModel from "../models/gasto.model.js";
+import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 
@@ -33,13 +34,28 @@ const GastoController = {
 
   create: async (req, res, next) => {
     try {
-      const { descripcion, monto, categoria, metodo_pago } = req.body;
+      const { descripcion, monto, categoria, metodo_pago, cuenta_dinero_id } = req.body;
       if (!descripcion || monto === undefined) return res.status(400).json({ success: false, error: "descripcion y monto son requeridos." });
       if (monto < 0) return res.status(400).json({ success: false, error: "El monto no puede ser negativo." });
       if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
         return res.status(400).json({ success: false, error: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` });
       }
       const gasto = await GastoModel.create({ descripcion, monto, categoria, metodo_pago, usuario_id: req.usuario_id });
+
+      if (cuenta_dinero_id) {
+        await MovimientoFinancieroModel.create({
+          fecha: gasto.fecha,
+          tipo: "egreso",
+          categoria: gasto.categoria || "otros_gastos",
+          monto: gasto.monto,
+          cuenta_dinero_id,
+          origen_tipo: "gasto",
+          origen_id: gasto.id,
+          descripcion: `Gasto #${gasto.id}: ${gasto.descripcion}`,
+          usuario_id: req.usuario_id,
+        });
+      }
+
       res.status(201).json({ success: true, data: gasto });
     } catch (err) { next(err); }
   },
