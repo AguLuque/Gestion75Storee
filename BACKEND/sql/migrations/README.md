@@ -11,3 +11,4 @@ Después de aplicar un archivo, anotar la fecha acá abajo:
 | Archivo | Aplicado el |
 | --- | --- |
 | 001_finanzas_base.sql | 2026-09-10 |
+| 002_cuentas_cobrar_pagar.sql | (pendiente) |
