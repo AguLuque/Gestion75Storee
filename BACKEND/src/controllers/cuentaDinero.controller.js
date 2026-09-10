@@ -1,4 +1,5 @@
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
+import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 
 const TIPOS_VALIDOS = ["efectivo", "banco", "billetera_virtual", "otro"];
 
@@ -51,6 +52,28 @@ const CuentaDineroController = {
       const resultado = await CuentaDineroModel.delete(id, req.usuario_id);
       if (!resultado) return res.status(404).json({ success: false, error: "Cuenta no encontrada." });
       res.json({ success: true, message: "Cuenta eliminada correctamente." });
+    } catch (err) { next(err); }
+  },
+
+  crearAjuste: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { monto, tipo, descripcion } = req.body;
+      if (!monto || monto <= 0) return res.status(400).json({ success: false, error: "monto debe ser mayor a 0." });
+      if (!["ingreso", "egreso"].includes(tipo)) {
+        return res.status(400).json({ success: false, error: "tipo debe ser 'ingreso' o 'egreso'." });
+      }
+      const cuenta = await CuentaDineroModel.getById(id, req.usuario_id);
+      if (!cuenta) return res.status(404).json({ success: false, error: "Cuenta no encontrada." });
+
+      const movimiento = await MovimientoFinancieroModel.create({
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo, categoria: "ajuste_manual", monto,
+        cuenta_dinero_id: id, origen_tipo: "ajuste_manual",
+        descripcion: descripcion || "Ajuste manual de saldo",
+        usuario_id: req.usuario_id,
+      });
+      res.status(201).json({ success: true, data: movimiento });
     } catch (err) { next(err); }
   },
 };

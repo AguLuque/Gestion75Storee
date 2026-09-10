@@ -8,5 +8,6 @@ router.get("/:id/saldo", CuentaDineroController.getSaldo);
 router.post("/", CuentaDineroController.create);
 router.put("/:id", CuentaDineroController.update);
 router.delete("/:id", CuentaDineroController.delete);
+router.post("/:id/ajuste", CuentaDineroController.crearAjuste);
 
 export default router;
