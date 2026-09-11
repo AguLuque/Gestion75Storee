@@ -303,6 +303,11 @@ const eliminarVenta = async (id, usuario_id) => {
       });
     }
 
+    await client.query(
+      `UPDATE cuentas_por_cobrar SET activo = false WHERE venta_id = $1 AND activo = true AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
     const { rows: ventaEliminada } = await client.query(
       `UPDATE ventas SET activo = false WHERE id = $1 RETURNING id, total, fecha`,
       [id]

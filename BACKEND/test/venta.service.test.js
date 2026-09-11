@@ -545,3 +545,24 @@ test("una venta pendiente con canal mercadolibre, comision y cuenta_dinero_id no
   await pool.query(`DELETE FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
 });
+
+test("anular una venta a credito desactiva su cuenta por cobrar", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_minorista: 300 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", estado_cobro: "pendiente", cliente_nombre: `${MARCA} cliente a anular`,
+    items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  await VentaService.eliminarVenta(venta.id, REAL_UID);
+
+  const { rows: cxc } = await pool.query(
+    `SELECT * FROM cuentas_por_cobrar WHERE venta_id = $1`,
+    [venta.id]
+  );
+  assert.equal(cxc.length, 1);
+  assert.equal(cxc[0].activo, false);
+
+  await pool.query(`DELETE FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
+});
