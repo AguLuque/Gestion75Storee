@@ -11,6 +11,7 @@ import deudorRoutes from "./deudor.routes.js";
 import cuentaDineroRoutes from "./cuentaDinero.routes.js";
 import cuentaPorCobrarRoutes from "./cuentaPorCobrar.routes.js";
 import cuentaPorPagarRoutes from "./cuentaPorPagar.routes.js";
+import reporteRoutes from "./reporte.routes.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -29,5 +30,6 @@ router.use("/deudores", deudorRoutes);
 router.use("/cuentas-dinero", cuentaDineroRoutes);
 router.use("/cuentas-por-cobrar", cuentaPorCobrarRoutes);
 router.use("/cuentas-por-pagar", cuentaPorPagarRoutes);
+router.use("/reportes", reporteRoutes);
 
 export default router;
