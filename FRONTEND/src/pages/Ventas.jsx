@@ -9,7 +9,7 @@ import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioVenta from '../components/FormularioVenta.jsx';
 
 export default function Ventas() {
-  const { ventasFiltradas: ventas, productos, cargando, recargar, esMesFuturo } = useDatosGlobal();
+  const { ventasFiltradas: ventas, productos, cuentasDinero, cargando, recargar, esMesFuturo } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -26,6 +26,7 @@ export default function Ventas() {
       setModalAbierto(false);
       recargar('ventas');
       recargar('productos');
+      recargar('cuentasPorCobrar');
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -170,6 +171,7 @@ export default function Ventas() {
       >
         <FormularioVenta
           productos={productos || []}
+          cuentasDinero={cuentasDinero || []}
           onGuardar={guardar}
           guardando={guardando}
           onCancelar={() => setModalAbierto(false)}

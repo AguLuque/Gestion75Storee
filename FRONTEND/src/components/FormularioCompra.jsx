@@ -14,12 +14,14 @@ const TIPOS_COMPRA = [
   { valor: 'internacional', etiqueta: 'Internacional' },
 ];
 
-export default function FormularioCompra({ compraInicial, productos, proveedores, onGuardar, guardando, onCancelar, onProductoCreado }) {
+export default function FormularioCompra({ compraInicial, productos, proveedores, cuentasDinero = [], onGuardar, guardando, onCancelar, onProductoCreado }) {
   const [proveedorId, setProveedorId] = useState('');
   const [items, setItems] = useState([itemVacio()]);
   const [observaciones, setObservaciones] = useState('');
   const [tipo, setTipo] = useState('local');
   const [costoEnvio, setCostoEnvio] = useState('');
+  const [cuentaDineroId, setCuentaDineroId] = useState('');
+  const [aCredito, setACredito] = useState(false);
   const [modalNuevoProducto, setModalNuevoProducto] = useState(false);
   const [nuevoProducto, setNuevoProducto] = useState({ nombre: '', categoria_id: '', precio_compra: '', precio_minorista: '', precio_mayorista: '' });
   const [categorias, setCategorias] = useState([]);
@@ -49,6 +51,8 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
       setTipo('local');
       setCostoEnvio('');
       setItems([itemVacio()]);
+      setCuentaDineroId('');
+      setACredito(false);
     }
   }, [compraInicial]);
 
@@ -104,6 +108,8 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
       observaciones: observaciones || null,
       tipo,
       costo_envio: Number(costoEnvio) || 0,
+      estado_pago: aCredito ? 'pendiente' : 'pagado',
+      cuenta_dinero_id: !aCredito && cuentaDineroId ? Number(cuentaDineroId) : null,
       items: itemsValidos.map(i => ({
         producto_id: Number(i.producto_id),
         cantidad: Number(i.cantidad),
@@ -135,6 +141,32 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
         <p className="text-xs text-slate-400 -mt-2">
           Incluye flete, correo, o nafta si tenés que ir a buscarlo (por ej. a otra ciudad por cargo).
         </p>
+
+        {!compraInicial && (
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="compra-a-credito"
+              checked={aCredito}
+              onChange={e => setACredito(e.target.checked)}
+              className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            />
+            <label htmlFor="compra-a-credito" className="text-sm text-slate-600">
+              Compra a crédito (todavía no se pagó)
+            </label>
+          </div>
+        )}
+
+        {!aCredito && (
+          <Select
+            label="Cuenta que paga (opcional)"
+            value={cuentaDineroId}
+            onChange={e => setCuentaDineroId(e.target.value)}
+          >
+            <option value="">Sin registrar en ninguna cuenta</option>
+            {cuentasDinero.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </Select>
+        )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">

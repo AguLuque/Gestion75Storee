@@ -18,10 +18,10 @@ const METODOS_PAGO = [
   { valor: 'otro', etiqueta: 'Otro' },
 ];
 
-const formularioVacio = { descripcion: '', monto: '', categoria: '', metodo_pago: '' };
+const formularioVacio = { descripcion: '', monto: '', categoria: '', metodo_pago: '', cuenta_dinero_id: '' };
 
 export default function Gastos() {
-  const { gastosFiltrados: gastos, cargando, recargar, esMesFuturo } = useDatosGlobal();
+  const { gastosFiltrados: gastos, cuentasDinero, cargando, recargar, esMesFuturo } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -43,7 +43,7 @@ export default function Gastos() {
 
   function abrirEditar(gasto) {
     setGastoEditando(gasto);
-    setFormulario({ descripcion: gasto.descripcion, monto: gasto.monto, categoria: gasto.categoria || '', metodo_pago: gasto.metodo_pago || '' });
+    setFormulario({ descripcion: gasto.descripcion, monto: gasto.monto, categoria: gasto.categoria || '', metodo_pago: gasto.metodo_pago || '', cuenta_dinero_id: '' });
     setModalAbierto(true);
   }
 
@@ -53,10 +53,11 @@ export default function Gastos() {
 
   async function guardar(e) {
     e.preventDefault();
-    const datos = { ...formulario, monto: Number(formulario.monto), metodo_pago: formulario.metodo_pago || null };
+    const { cuenta_dinero_id, ...resto } = formulario;
+    const datos = { ...resto, monto: Number(formulario.monto), metodo_pago: formulario.metodo_pago || null };
     const accion = gastoEditando
       ? () => gastosApi.actualizar(gastoEditando.id, datos)
-      : () => gastosApi.crear(datos);
+      : () => gastosApi.crear({ ...datos, cuenta_dinero_id: cuenta_dinero_id ? Number(cuenta_dinero_id) : null });
 
     const resultado = await ejecutar(accion);
     if (resultado.ok) {
@@ -171,6 +172,16 @@ export default function Gastos() {
             <option value="">Sin especificar</option>
             {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
           </Select>
+          {!gastoEditando && (
+            <Select
+              label="Cuenta que paga (opcional)"
+              value={formulario.cuenta_dinero_id}
+              onChange={e => actualizar('cuenta_dinero_id', e.target.value)}
+            >
+              <option value="">Sin registrar en ninguna cuenta</option>
+              {(cuentasDinero || []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </Select>
+          )}
           <div className="flex gap-2 justify-end pt-1">
             <Boton variante="secundario" type="button" onClick={() => setModalAbierto(false)} disabled={guardando}>
               Cancelar

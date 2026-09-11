@@ -103,3 +103,25 @@ export const deudoresApi = {
   eliminar: (id) => peticion(`/deudores/${id}`, { method: 'DELETE' }),
   marcarPagado: (id, pagado) => peticion(`/deudores/${id}/pagado`, { method: 'PATCH', body: JSON.stringify({ pagado }) }),
 };
+
+// Cuentas de dinero (Caja, Banco, Naranja X, etc.)
+export const cuentasDineroApi = {
+  listar: () => peticion('/cuentas-dinero'),
+  obtenerSaldo: (id) => peticion(`/cuentas-dinero/${id}/saldo`),
+  crear: (datos) => peticion('/cuentas-dinero', { method: 'POST', body: JSON.stringify(datos) }),
+  actualizar: (id, datos) => peticion(`/cuentas-dinero/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
+  eliminar: (id) => peticion(`/cuentas-dinero/${id}`, { method: 'DELETE' }),
+  ajustar: (id, datos) => peticion(`/cuentas-dinero/${id}/ajuste`, { method: 'POST', body: JSON.stringify(datos) }),
+};
+
+// Cuentas por cobrar (ventas a crédito pendientes)
+export const cuentasPorCobrarApi = {
+  listar: () => peticion('/cuentas-por-cobrar'),
+  registrarCobro: (id, datos) => peticion(`/cuentas-por-cobrar/${id}/cobro`, { method: 'POST', body: JSON.stringify(datos) }),
+};
+
+// Cuentas por pagar (compras a crédito pendientes)
+export const cuentasPorPagarApi = {
+  listar: () => peticion('/cuentas-por-pagar'),
+  registrarPago: (id, datos) => peticion(`/cuentas-por-pagar/${id}/pago`, { method: 'POST', body: JSON.stringify(datos) }),
+};

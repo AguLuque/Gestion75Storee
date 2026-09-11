@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { Boton, Select, Textarea } from './ui/index.jsx';
+import { Boton, Select, Textarea, Input } from './ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
 import { InputPrecio } from './ui/index.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
 
-export default function FormularioVenta({ productos, onGuardar, guardando, onCancelar }) {
+export default function FormularioVenta({ productos, cuentasDinero = [], onGuardar, guardando, onCancelar }) {
   const [tipo, setTipo] = useState('minorista');
   const [items, setItems] = useState([itemVacio()]);
   const [observaciones, setObservaciones] = useState('');
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [canal, setCanal] = useState('directa');
   const [comision, setComision] = useState('');
+  const [cuentaDineroId, setCuentaDineroId] = useState('');
+  const [aCredito, setACredito] = useState(false);
+  const [clienteNombre, setClienteNombre] = useState('');
+  const [fechaVencimiento, setFechaVencimiento] = useState('');
   const { mostrarToast } = useToast();
 
   function actualizarItem(idx, campo, valor) {
@@ -83,6 +87,10 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
       metodo_pago: metodoPago,
       canal,
       comision: canal === 'mercadolibre' ? Number(comision) || 0 : 0,
+      estado_cobro: aCredito ? 'pendiente' : 'cobrado',
+      cliente_nombre: aCredito ? (clienteNombre || null) : null,
+      fecha_vencimiento: aCredito ? (fechaVencimiento || null) : null,
+      cuenta_dinero_id: !aCredito && cuentaDineroId ? Number(cuentaDineroId) : null,
       items: itemsConProducto.map(i => ({
         producto_id: Number(i.producto_id),
         cantidad: Number(i.cantidad),
@@ -134,6 +142,45 @@ export default function FormularioVenta({ productos, onGuardar, guardando, onCan
           />
         )}
       </div>
+
+      <div className="flex items-center gap-2 -mt-1">
+        <input
+          type="checkbox"
+          id="venta-a-credito"
+          checked={aCredito}
+          onChange={e => setACredito(e.target.checked)}
+          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+        />
+        <label htmlFor="venta-a-credito" className="text-sm text-slate-600">
+          Venta a crédito (todavía no se cobró)
+        </label>
+      </div>
+
+      {aCredito ? (
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Cliente (opcional)"
+            value={clienteNombre}
+            onChange={e => setClienteNombre(e.target.value)}
+            placeholder="Nombre del cliente"
+          />
+          <Input
+            label="Vence el (opcional)"
+            type="date"
+            value={fechaVencimiento}
+            onChange={e => setFechaVencimiento(e.target.value)}
+          />
+        </div>
+      ) : (
+        <Select
+          label="Cuenta que recibe el dinero (opcional)"
+          value={cuentaDineroId}
+          onChange={e => setCuentaDineroId(e.target.value)}
+        >
+          <option value="">Sin registrar en ninguna cuenta</option>
+          {cuentasDinero.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </Select>
+      )}
 
       {/* Items */}
       <div className="space-y-3">

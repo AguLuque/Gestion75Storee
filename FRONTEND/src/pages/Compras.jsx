@@ -25,7 +25,7 @@ function itemsConCostoEstimado(compra) {
 }
 
 export default function Compras() {
-  const { comprasFiltradas: compras, productos, proveedores, cargando, recargar, esMesFuturo } = useDatosGlobal();
+  const { comprasFiltradas: compras, productos, proveedores, cuentasDinero, cargando, recargar, esMesFuturo } = useDatosGlobal();
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
@@ -60,6 +60,7 @@ export default function Compras() {
       setModalAbierto(false);
       recargar('compras');
       recargar('productos');
+      recargar('cuentasPorPagar');
     } else {
       mostrarToast(resultado.error, 'error');
     }
@@ -177,6 +178,7 @@ export default function Compras() {
           compraInicial={compraEditando}
           productos={Array.isArray(productos) ? productos : []}
           proveedores={Array.isArray(proveedores) ? proveedores : []}
+          cuentasDinero={Array.isArray(cuentasDinero) ? cuentasDinero : []}
           onGuardar={guardar}
           guardando={guardando}
           onCancelar={() => setModalAbierto(false)}
