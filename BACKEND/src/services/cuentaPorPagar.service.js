@@ -22,7 +22,7 @@ const registrarPago = async (cuentaPorPagarId, { monto, cuenta_dinero_id }, usua
 
     const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
     if (!cuenta) {
-      throw { status: 404, message: "Cuenta por pagar no encontrada." };
+      throw { status: 404, message: "Cuenta de dinero no encontrada." };
     }
 
     const cxpExistente = await client.query(
