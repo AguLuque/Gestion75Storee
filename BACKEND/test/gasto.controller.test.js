@@ -6,6 +6,7 @@ dotenv.config();
 
 import pool from "../src/config/db.js";
 import GastoController from "../src/controllers/gasto.controller.js";
+import CuentaDineroModel from "../src/models/cuentaDinero.model.js";
 
 const MARCA = "__TEST_FINANZAS__";
 const OTRO_UID = "11111111-1111-1111-1111-111111111111";
@@ -143,6 +144,38 @@ test("rechaza gasto con cuenta_dinero_id de otro usuario y no crea gasto ni movi
   assert.equal(movs.length, 0, "no debe crear ningún movimiento");
 
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuentaAjenaId]);
+});
+
+test("eliminar un gasto con cuenta_dinero_id revierte el movimiento financiero", async () => {
+  const { req, res, getJson } = crearReqRes({
+    descripcion: `${MARCA} gasto a eliminar`, monto: 2000, categoria: "Alquiler", cuenta_dinero_id: cuentaDineroId,
+  });
+  await GastoController.create(req, res, (err) => { throw err; });
+  const gasto = getJson().data;
+  gastosCreados.push(gasto.id);
+
+  const saldoAntes = await CuentaDineroModel.getSaldo(cuentaDineroId, REAL_UID);
+
+  const { req: reqDel, res: resDel, getJson: getJsonDel } = crearReqRes({});
+  reqDel.params = { id: gasto.id };
+  await GastoController.delete(reqDel, resDel, (err) => { throw err; });
+
+  assert.equal(getJsonDel().success, true);
+
+  const saldoDespues = await CuentaDineroModel.getSaldo(cuentaDineroId, REAL_UID);
+  assert.equal(Number(saldoDespues), Number(saldoAntes) + 2000, "el saldo vuelve al valor previo al gasto");
+
+  const { rows: gastoTras } = await pool.query(`SELECT * FROM gastos WHERE id = $1`, [gasto.id]);
+  assert.equal(gastoTras.length, 0, "el gasto queda eliminado");
+});
+
+test("eliminar un gasto inexistente devuelve 404", async () => {
+  const { req: reqDel, res: resDel, getStatus, getJson: getJsonDel } = crearReqRes({});
+  reqDel.params = { id: 9999999 };
+  await GastoController.delete(reqDel, resDel, (err) => { throw err; });
+
+  assert.equal(getStatus(), 404);
+  assert.ok(getJsonDel().error.includes("no encontrado"));
 });
 
 test("rechaza gasto con cuenta_dinero_id inexistente y no crea gasto ni movimiento", async () => {

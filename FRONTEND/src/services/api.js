@@ -76,6 +76,7 @@ export const comprasApi = {
     method: 'PUT',
     body: JSON.stringify(datos)
   }),
+  eliminar: (id) => peticion(`/compras/${id}`, { method: 'DELETE' }),
 };
 
 // Gastos

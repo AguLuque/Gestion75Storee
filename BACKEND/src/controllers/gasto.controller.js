@@ -88,6 +88,24 @@ const GastoController = {
   delete: async (req, res, next) => {
     try {
       const { id } = req.params;
+      const gasto = await GastoModel.getById(id, req.usuario_id);
+      if (!gasto) return res.status(404).json({ success: false, error: "Gasto no encontrado." });
+
+      const movimientos = await MovimientoFinancieroModel.getByOrigen("gasto", id, req.usuario_id);
+      for (const mov of movimientos) {
+        await MovimientoFinancieroModel.create({
+          fecha: new Date().toISOString().slice(0, 10),
+          tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
+          categoria: mov.categoria,
+          monto: mov.monto,
+          cuenta_dinero_id: mov.cuenta_dinero_id,
+          origen_tipo: "gasto",
+          origen_id: id,
+          descripcion: `Reversión por eliminación de gasto #${id}`,
+          usuario_id: req.usuario_id,
+        });
+      }
+
       const resultado = await GastoModel.delete(id, req.usuario_id);
       if (!resultado) return res.status(404).json({ success: false, error: "Gasto no encontrado." });
       res.json({ success: true, message: "Gasto eliminado correctamente." });

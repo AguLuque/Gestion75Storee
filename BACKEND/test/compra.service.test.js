@@ -270,6 +270,77 @@ test("editar una compra sin volver a pasar cuenta_dinero_id revierte los movimie
   await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
 });
 
+test("eliminar una compra revierte el stock y el movimiento financiero", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const cuenta = await pool.query(
+    `INSERT INTO cuentas_dinero (nombre, tipo, saldo_inicial, usuario_id) VALUES ($1,'efectivo',0,$2) RETURNING id`,
+    [`${MARCA} cuenta eliminar`, REAL_UID]
+  );
+  const cuenta_dinero_id = cuenta.rows[0].id;
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, cuenta_dinero_id,
+    items: [{ producto_id: p.id, cantidad: 5, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  await CompraService.eliminarCompra(compra.id, REAL_UID);
+
+  const pTras = await ProductoModel.getById(p.id, REAL_UID);
+  assert.equal(Number(pTras.stock_actual), 10, "el stock vuelve al original tras eliminar la compra");
+
+  const saldo = await CuentaDineroModel.getSaldo(cuenta_dinero_id, REAL_UID);
+  assert.equal(Number(saldo), 0, "el movimiento de la compra queda revertido");
+
+  const compraTras = await CompraService.editarCompra(compra.id, {
+    proveedor_id: null, items: [{ producto_id: p.id, cantidad: 1, precio_unitario: 1 }], usuario_id: REAL_UID,
+  }).catch((err) => err);
+  assert.equal(compraTras.status, 404, "una compra eliminada no puede editarse (queda inactiva)");
+
+  await pool.query(`DELETE FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1`, [compra.id]);
+  await pool.query(`DELETE FROM cuentas_dinero WHERE id = $1`, [cuenta_dinero_id]);
+});
+
+test("eliminar una compra a credito desactiva su cuenta por pagar", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, estado_pago: "pendiente",
+    items: [{ producto_id: p.id, cantidad: 2, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  await CompraService.eliminarCompra(compra.id, REAL_UID);
+
+  const { rows: cxp } = await pool.query(`SELECT * FROM cuentas_por_pagar WHERE compra_id = $1`, [compra.id]);
+  assert.equal(cxp[0].activo, false);
+
+  await pool.query(`DELETE FROM cuentas_por_pagar WHERE compra_id = $1`, [compra.id]);
+});
+
+test("eliminar una compra ajena o inexistente es rechazada y no toca el stock", async () => {
+  const p = await productoDePrueba({ stock_actual: 10 });
+
+  const compra = await CompraService.crearCompra({
+    proveedor_id: null, items: [{ producto_id: p.id, cantidad: 2, precio_unitario: 40 }], usuario_id: REAL_UID,
+  });
+  comprasCreadas.push(compra.id);
+
+  await assert.rejects(
+    () => CompraService.eliminarCompra(compra.id, OTRO_UID),
+    (err) => err.status === 404
+  );
+
+  const pTras = await ProductoModel.getById(p.id, REAL_UID);
+  assert.equal(Number(pTras.stock_actual), 12, "el stock no debe cambiar tras un intento de eliminacion ajena");
+
+  await assert.rejects(
+    () => CompraService.eliminarCompra(9999999, REAL_UID),
+    (err) => err.status === 404
+  );
+});
+
 test("una compra con cuenta_dinero_id de otro usuario es rechazada y no crea compra ni movimiento", async () => {
   const p = await productoDePrueba({ stock_actual: 10 });
 

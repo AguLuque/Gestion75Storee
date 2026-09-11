@@ -22,7 +22,7 @@ const CompraModel = {
     LEFT JOIN proveedores p ON p.id = c.proveedor_id
     JOIN compra_items ci ON ci.compra_id = c.id
     JOIN productos prod ON prod.id = ci.producto_id
-    WHERE c.usuario_id = $1
+    WHERE c.usuario_id = $1 AND c.activo = true
     GROUP BY c.id, p.nombre
     ORDER BY c.fecha DESC
   `, [usuario_id]);
@@ -44,7 +44,7 @@ const CompraModel = {
     LEFT JOIN proveedores p ON p.id = c.proveedor_id
     JOIN compra_items ci ON ci.compra_id = c.id
     JOIN productos prod ON prod.id = ci.producto_id
-    WHERE c.id = $1 AND c.usuario_id = $2
+    WHERE c.id = $1 AND c.usuario_id = $2 AND c.activo = true
     GROUP BY c.id, p.nombre
   `, [id, usuario_id]);
     return rows[0] || null;

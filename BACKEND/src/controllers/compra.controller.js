@@ -46,6 +46,14 @@ const CompraController = {
       res.json({ success: true, data: compra });
     } catch (err) { next(err); }
   },
+
+  delete: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const resultado = await CompraService.eliminarCompra(id, req.usuario_id);
+      res.json({ success: true, message: `Compra del ${new Date(resultado.fecha).toLocaleDateString('es-AR')} por $${resultado.total} eliminada correctamente.` });
+    } catch (err) { next(err); }
+  },
 };
 
 export default CompraController;

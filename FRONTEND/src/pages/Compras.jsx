@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
 import { comprasApi, productosApi, proveedoresApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
-import { Boton, Card, Modal, Spinner, Drawer, DetalleCampo, CardMobile, Badge } from '../components/ui/index.jsx';
+import { Boton, Card, Modal, Spinner, Drawer, DetalleCampo, CardMobile, Badge, ModalConfirmar } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';
 import FormularioCompra from '../components/FormularioCompra.jsx';
 
@@ -33,6 +33,7 @@ export default function Compras() {
   const [compraEditando, setCompraEditando] = useState(null);
   const [expandida, setExpandida] = useState(null);
   const [detalleMobile, setDetalleMobile] = useState(null);
+  const [confirmEliminar, setConfirmEliminar] = useState(null);
 
 
   function abrirCrear() {
@@ -58,6 +59,19 @@ export default function Compras() {
     if (resultado.ok) {
       mostrarToast(compraEditando ? 'Compra actualizada' : 'Compra registrada');
       setModalAbierto(false);
+      recargar('compras');
+      recargar('productos');
+      recargar('cuentasPorPagar');
+    } else {
+      mostrarToast(resultado.error, 'error');
+    }
+  }
+
+  async function eliminar() {
+    const resultado = await ejecutar(() => comprasApi.eliminar(confirmEliminar.id));
+    if (resultado.ok) {
+      mostrarToast('Compra eliminada');
+      setConfirmEliminar(null);
       recargar('compras');
       recargar('productos');
       recargar('cuentasPorPagar');
@@ -105,6 +119,13 @@ export default function Compras() {
                 )}
                 <Boton variante="fantasma" tamaño="sm" onClick={() => abrirEditar(compra)}>
                   <Pencil size={14} />
+                </Boton>
+                <Boton
+                  variante="peligro"
+                  tamaño="sm"
+                  onClick={() => setConfirmEliminar(compra)}
+                >
+                  <Trash2 size={14} />
                 </Boton>
                 <div
                   className="cursor-pointer text-slate-400 p-1"
@@ -186,14 +207,27 @@ export default function Compras() {
         />
       </Modal>
 
+      <ModalConfirmar
+        abierto={!!confirmEliminar}
+        onCerrar={() => setConfirmEliminar(null)}
+        onConfirmar={eliminar}
+        mensaje="¿Eliminar la compra? Esta acción desactivará y no podrá ver la compra."
+        cargando={guardando}
+      />
+
       <Drawer
         abierto={!!detalleMobile}
         onCerrar={() => setDetalleMobile(null)}
         titulo={detalleMobile ? formatearPrecio(detalleMobile.total) : ''}
         footer={detalleMobile && (
-          <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
-            <Pencil size={14} /> Editar
-          </Boton>
+          <div className="flex gap-2">
+            <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
+              <Pencil size={14} /> Editar
+            </Boton>
+            <Boton variante="peligro" onClick={() => { setDetalleMobile(null); setConfirmEliminar(detalleMobile); }}>
+              <Trash2 size={14} /> Eliminar
+            </Boton>
+          </div>
         )}
       >
         {detalleMobile && (

@@ -9,5 +9,6 @@ router.get("/", CompraController.getAll);
 router.get("/:id", CompraController.getById);
 router.post("/", CompraController.create);
 router.put("/:id", CompraController.update);
+router.delete("/:id", CompraController.delete);
 
 export default router;

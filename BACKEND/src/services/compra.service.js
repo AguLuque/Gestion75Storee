@@ -164,7 +164,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
 
     // Bloquea la compra para serializar ediciones concurrentes de la misma compra
     const { rows: compraLock } = await client.query(
-      `SELECT id FROM compras WHERE id = $1 AND usuario_id = $2 FOR UPDATE`,
+      `SELECT id FROM compras WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
       [id, usuario_id]
     );
     if (!compraLock[0]) {
@@ -269,4 +269,67 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
   }
 };
 
-export default { crearCompra, editarCompra };
+const eliminarCompra = async (id, usuario_id) => {
+  const client = await CompraModel.getClient();
+
+  try {
+    await client.query("BEGIN");
+
+    const { rows: compraRows } = await client.query(
+      `SELECT id FROM compras WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
+      [id, usuario_id]
+    );
+
+    if (!compraRows[0]) {
+      throw { status: 404, message: "Compra no encontrada o ya fue eliminada." };
+    }
+
+    const { rows: items } = await client.query(
+      `SELECT producto_id, cantidad FROM compra_items WHERE compra_id = $1`,
+      [id]
+    );
+
+    for (const item of items) {
+      await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
+    }
+
+    const { rows: movimientosOriginales } = await client.query(
+      `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1 AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
+    for (const mov of movimientosOriginales) {
+      await MovimientoFinancieroModel.createEnTransaccion(client, {
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
+        categoria: mov.categoria,
+        monto: mov.monto,
+        cuenta_dinero_id: mov.cuenta_dinero_id,
+        origen_tipo: "compra",
+        origen_id: id,
+        descripcion: `Reversión por anulación de compra #${id}`,
+        usuario_id,
+      });
+    }
+
+    await client.query(
+      `UPDATE cuentas_por_pagar SET activo = false WHERE compra_id = $1 AND activo = true AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
+    const { rows: compraEliminada } = await client.query(
+      `UPDATE compras SET activo = false WHERE id = $1 RETURNING id, total, fecha`,
+      [id]
+    );
+
+    await client.query("COMMIT");
+    return compraEliminada[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+export default { crearCompra, editarCompra, eliminarCompra };
