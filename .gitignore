@@ -28,3 +28,6 @@ dist-ssr
 **/.env
 BACKEND/.env
 FRONTEND/.env
+
+# Notas personales (no son relevantes para el repo/GitHub)
+docs/notas/

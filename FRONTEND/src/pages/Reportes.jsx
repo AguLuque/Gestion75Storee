@@ -12,6 +12,39 @@ const TABS = [
   { id: 'flujo-caja', etiqueta: 'Flujo de Caja' },
 ];
 
+// Las categorías vienen de movimientos_financieros tal cual las define
+// BACKEND/src/constants/finanzas.js (texto plano en snake_case). Este mapa
+// las traduce a algo legible; cualquier categoría no mapeada cae al fallback
+// (reemplaza "_" por espacio y capitaliza) en vez de romper.
+const ETIQUETAS_CATEGORIA = {
+  venta_productos: 'Venta de productos',
+  venta_servicios: 'Venta de servicios',
+  otros_ingresos: 'Otros ingresos',
+  costo_mercaderia: 'Costo de mercadería',
+  flete: 'Flete',
+  importacion: 'Importación',
+  comisiones: 'Comisiones',
+  alquiler: 'Alquiler',
+  servicios: 'Servicios',
+  sueldos: 'Sueldos',
+  marketing: 'Marketing',
+  software: 'Software',
+  telefonia: 'Telefonía',
+  combustible: 'Combustible',
+  mantenimiento: 'Mantenimiento',
+  honorarios: 'Honorarios',
+  impuestos: 'Impuestos',
+  gastos_bancarios: 'Gastos bancarios',
+  otros_gastos: 'Otros gastos',
+  ajuste_manual: 'Ajuste manual',
+};
+
+function etiquetaCategoria(categoria) {
+  return ETIQUETAS_CATEGORIA[categoria] || (
+    categoria.charAt(0).toUpperCase() + categoria.slice(1).replace(/_/g, ' ')
+  );
+}
+
 function primerDiaDelMes() {
   const hoy = new Date();
   return new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
@@ -164,7 +197,7 @@ function TabFlujoCaja({ datos }) {
           <p className="text-sm text-slate-400">Sin movimientos en el período</p>
         ) : (
           datos.detalle_por_categoria.map((d, i) => (
-            <Fila key={i} etiqueta={d.categoria} valor={d.monto} negativo={d.tipo === 'egreso'} />
+            <Fila key={i} etiqueta={etiquetaCategoria(d.categoria)} valor={d.monto} negativo={d.tipo === 'egreso'} />
           ))
         )}
       </Card>
