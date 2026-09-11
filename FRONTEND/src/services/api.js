@@ -126,3 +126,11 @@ export const cuentasPorPagarApi = {
   listar: () => peticion('/cuentas-por-pagar'),
   registrarPago: (id, datos) => peticion(`/cuentas-por-pagar/${id}/pago`, { method: 'POST', body: JSON.stringify(datos) }),
 };
+
+// Reportes
+export const reportesApi = {
+  resumen: (desde, hasta) => peticion(`/reportes/resumen?desde=${desde}&hasta=${hasta}`),
+  estadoResultados: (desde, hasta) => peticion(`/reportes/estado-resultados?desde=${desde}&hasta=${hasta}`),
+  balance: () => peticion(`/reportes/balance`),
+  flujoCaja: (desde, hasta) => peticion(`/reportes/flujo-caja?desde=${desde}&hasta=${hasta}`),
+};

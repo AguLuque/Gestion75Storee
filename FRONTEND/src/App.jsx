@@ -16,6 +16,7 @@ import Deudores from './pages/Deudores.jsx';
 import CuentasDinero from './pages/CuentasDinero.jsx';
 import CuentasPorCobrar from './pages/CuentasPorCobrar.jsx';
 import CuentasPorPagar from './pages/CuentasPorPagar.jsx';
+import Reportes from './pages/Reportes.jsx';
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="cuentas-dinero" element={<CuentasDinero />} />
               <Route path="cuentas-por-cobrar" element={<CuentasPorCobrar />} />
               <Route path="cuentas-por-pagar" element={<CuentasPorPagar />} />
+              <Route path="reportes" element={<Reportes />} />
             </Route>
           </Routes>
         </ToastProvider>

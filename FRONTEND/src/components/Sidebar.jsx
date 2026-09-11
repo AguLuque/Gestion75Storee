@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, TrendingUp,
   Tag, Truck, DollarSign, Users, X, LogOut,
-  Wallet, HandCoins, Landmark
+  Wallet, HandCoins, Landmark, FileBarChart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { cn } from '../utils.js';
@@ -19,6 +19,7 @@ const items = [
   { a: '/cuentas-dinero', icono: Wallet, etiqueta: 'Cuentas de dinero' },
   { a: '/cuentas-por-cobrar', icono: HandCoins, etiqueta: 'Por cobrar' },
   { a: '/cuentas-por-pagar', icono: Landmark, etiqueta: 'Por pagar' },
+  { a: '/reportes', icono: FileBarChart, etiqueta: 'Reportes' },
 ];
 
 export default function Sidebar({ cerrar, cerrarMenu }) {
