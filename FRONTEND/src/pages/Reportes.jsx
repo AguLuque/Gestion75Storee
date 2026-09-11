@@ -136,11 +136,18 @@ function TabResumen({ datos }) {
   );
 }
 
+// `negativo` fuerza a mostrar la fila como una resta (ej. "Costo de
+// mercadería", que llega del backend como magnitud positiva pero se resta
+// conceptualmente). Sin ese flag, se muestra el valor tal cual viene —
+// necesario para filas calculadas (Utilidad neta, Flujo neto, Patrimonio,
+// Saldo final) que pueden ser negativas de verdad (una pérdida real) y
+// tienen que poder mostrarlo, no solo los renglones marcados a mano.
 function Fila({ etiqueta, valor, negativo, total }) {
+  const numero = negativo ? -Math.abs(Number(valor)) : Number(valor);
   return (
     <div className={`flex justify-between py-2 text-sm ${total ? 'border-t border-slate-200 mt-1 pt-3 font-semibold text-slate-800' : 'text-slate-600'}`}>
       <span>{etiqueta}</span>
-      <span className={negativo ? 'text-red-500' : ''}>{negativo ? '-' : ''}{formatearPrecio(Math.abs(valor))}</span>
+      <span className={numero < 0 ? 'text-red-500' : ''}>{formatearPrecio(numero)}</span>
     </div>
   );
 }
