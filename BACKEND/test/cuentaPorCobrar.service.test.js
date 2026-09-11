@@ -59,6 +59,7 @@ test("registrar un cobro parcial decrementa el saldo y crea un movimiento de ing
   );
   assert.equal(movs.length, 1);
   assert.equal(movs[0].tipo, "ingreso");
+  assert.equal(movs[0].categoria, "venta_productos");
   assert.equal(Number(movs[0].monto), 400);
 });
 

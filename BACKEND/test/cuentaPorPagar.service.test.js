@@ -59,6 +59,7 @@ test("registrar un pago parcial decrementa el saldo y crea un movimiento de egre
   );
   assert.equal(movs.length, 1);
   assert.equal(movs[0].tipo, "egreso");
+  assert.equal(movs[0].categoria, "costo_mercaderia");
   assert.equal(Number(movs[0].monto), 400);
 });
 
