@@ -1589,6 +1589,74 @@ git commit -m "agrego endpoints de cobro y pago parcial de cuentas por cobrar y 
 
 ---
 
+### Task 11: Anular una venta a crédito desactiva su cuenta por cobrar
+
+**Files:**
+- Modify: `BACKEND/src/services/venta.service.js`
+- Test: `BACKEND/test/venta.service.test.js`
+
+**Interfaces:**
+- Produce: `eliminarVenta` ahora, además de revertir movimientos (Task 3), busca cualquier `cuenta_por_cobrar` activa con `venta_id = id` y la marca `activo = false` — evita que una venta a crédito anulada siga apareciendo como saldo pendiente en `CuentaPorCobrarModel.getTotalPendiente`. No se toca ningún cobro parcial ya registrado (esos movimientos financieros quedan intactos, como cualquier cobro real ya recibido).
+
+- [ ] **Paso 1: Escribir el test que falla**
+
+Agregar a `BACKEND/test/venta.service.test.js`:
+
+```js
+test("anular una venta a credito desactiva su cuenta por cobrar", async () => {
+  const p = await productoDePrueba({ stock_actual: 5, precio_minorista: 300 });
+
+  const venta = await VentaService.crearVenta({
+    tipo: "minorista", estado_cobro: "pendiente", cliente_nombre: `${MARCA} cliente a anular`,
+    items: [{ producto_id: p.id, cantidad: 1 }], usuario_id: REAL_UID,
+  });
+  ventasCreadas.push(venta.id);
+
+  await VentaService.eliminarVenta(venta.id, REAL_UID);
+
+  const { rows: cxc } = await pool.query(
+    `SELECT * FROM cuentas_por_cobrar WHERE venta_id = $1`,
+    [venta.id]
+  );
+  assert.equal(cxc.length, 1);
+  assert.equal(cxc[0].activo, false);
+
+  await pool.query(`DELETE FROM cuentas_por_cobrar WHERE venta_id = $1`, [venta.id]);
+});
+```
+
+- [ ] **Paso 2: Correr el test y verificar que falla**
+
+Run: `cd BACKEND && npm test -- --test-name-pattern="desactiva su cuenta"`
+Expected: FAIL — `cxc[0].activo` sigue en `true`.
+
+- [ ] **Paso 3: Modificar `eliminarVenta`**
+
+En [BACKEND/src/services/venta.service.js](../../../BACKEND/src/services/venta.service.js), dentro de `eliminarVenta`, en cualquier punto dentro de la transacción antes del `COMMIT` (por ejemplo, junto al bloque de reversión de movimientos de la Task 3), agregar:
+
+```js
+    await client.query(
+      `UPDATE cuentas_por_cobrar SET activo = false WHERE venta_id = $1 AND activo = true AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+```
+
+Esto es un no-op silencioso si la venta no tenía cuenta por cobrar (no afecta ninguna fila), preservando el comportamiento actual para toda venta que no sea a crédito.
+
+- [ ] **Paso 4: Correr toda la suite y verificar que pasa**
+
+Run: `cd BACKEND && npm test`
+Expected: PASS.
+
+- [ ] **Paso 5: Commit**
+
+```bash
+git add BACKEND/src/services/venta.service.js BACKEND/test/venta.service.test.js
+git commit -m "anular una venta a credito desactiva su cuenta por cobrar huerfana"
+```
+
+---
+
 ## Self-Review
 
 **Cobertura:** los 3 rulings de la revisión final de Etapa 1 quedan resueltos en las Tareas 1-4, antes de tocar cuentas por cobrar/pagar. Devengado vs. percibido queda explícito: `cuentas_por_cobrar`/`cuentas_por_pagar` reflejan el Estado de Resultados (a través de `ventas.total`/`compras.total`, ya existentes), `movimientos_financieros` solo se toca cuando hay caja real (creación con estado cobrado/pagado, o cobro/pago posterior) — exactamente el ejemplo que pidió el usuario ("una venta a crédito genera ingreso... pero no caja hasta que se cobra").
