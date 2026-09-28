@@ -6,6 +6,7 @@
 
 import pool from "../config/db.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import { fechaArgentina } from "../utils/fechas.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import { normalizarCategoriaGasto, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
 
@@ -79,7 +80,7 @@ const editarGasto = async (id, { descripcion, monto, categoria, metodo_pago }, u
         // movimientos del gasto y se registra el egreso con los datos nuevos.
         for (const mov of movimientos) {
           await MovimientoFinancieroModel.createEnTransaccion(client, {
-            fecha: new Date().toISOString().slice(0, 10),
+            fecha: fechaArgentina(),
             tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
             categoria: mov.categoria,
             monto: mov.monto,
@@ -94,7 +95,7 @@ const editarGasto = async (id, { descripcion, monto, categoria, metodo_pago }, u
         // Un gasto editado a $0 queda solo revertido (el libro no admite montos 0).
         if (Number(actualizado.monto) > 0) {
           await MovimientoFinancieroModel.createEnTransaccion(client, {
-            fecha: new Date().toISOString().slice(0, 10),
+            fecha: fechaArgentina(),
             tipo: "egreso",
             categoria: normalizarCategoriaGasto(actualizado.categoria),
             monto: actualizado.monto,

@@ -12,6 +12,7 @@ import VentaModel from "../models/venta.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import { fechaArgentina } from "../utils/fechas.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import CuentaPorCobrarModel from "../models/cuentaPorCobrar.model.js";
 import { CATEGORIAS_INGRESO, CATEGORIAS_COSTO, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
@@ -187,7 +188,7 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
         venta_id: venta.id,
         cliente_nombre: cliente_nombre ?? null,
         monto_total: total,
-        fecha_emision: venta.fecha,
+        fecha_emision: fechaArgentina(venta.fecha),
         fecha_vencimiento: fecha_vencimiento ?? null,
         usuario_id,
       });
@@ -201,7 +202,7 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
       }
 
       await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: venta.fecha,
+        fecha: fechaArgentina(venta.fecha),
         tipo: "ingreso",
         categoria: CATEGORIAS_INGRESO.VENTA_PRODUCTOS,
         monto: total,
@@ -214,7 +215,7 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
 
       if (comisionNumerica > 0) {
         await MovimientoFinancieroModel.createEnTransaccion(client, {
-          fecha: venta.fecha,
+          fecha: fechaArgentina(venta.fecha),
           tipo: "egreso",
           categoria: CATEGORIAS_COSTO.COMISIONES,
           monto: comisionNumerica,
@@ -294,7 +295,7 @@ const eliminarVenta = async (id, usuario_id) => {
 
     for (const mov of movimientosOriginales) {
       await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaArgentina(),
         tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
         categoria: mov.categoria,
         monto: mov.monto,

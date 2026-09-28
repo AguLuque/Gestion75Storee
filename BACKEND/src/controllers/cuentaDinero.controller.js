@@ -1,5 +1,6 @@
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import { fechaArgentina } from "../utils/fechas.js";
 
 const TIPOS_VALIDOS = ["efectivo", "banco", "billetera_virtual", "otro"];
 
@@ -67,7 +68,7 @@ const CuentaDineroController = {
       if (!cuenta) return res.status(404).json({ success: false, error: "Cuenta no encontrada." });
 
       const movimiento = await MovimientoFinancieroModel.create({
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaArgentina(),
         tipo, categoria: "ajuste_manual", monto,
         cuenta_dinero_id: id, origen_tipo: "ajuste_manual",
         descripcion: descripcion || "Ajuste manual de saldo",

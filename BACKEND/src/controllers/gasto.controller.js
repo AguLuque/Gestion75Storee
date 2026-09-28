@@ -2,6 +2,7 @@
 
 import GastoModel from "../models/gasto.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import { fechaArgentina } from "../utils/fechas.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import { normalizarCategoriaGasto, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
 import GastoService from "../services/gasto.service.js";
@@ -58,7 +59,7 @@ const GastoController = {
 
       if (cuenta_dinero_id) {
         await MovimientoFinancieroModel.create({
-          fecha: gasto.fecha,
+          fecha: fechaArgentina(gasto.fecha),
           tipo: "egreso",
           categoria: normalizarCategoriaGasto(gasto.categoria),
           monto: gasto.monto,
@@ -99,7 +100,7 @@ const GastoController = {
       const movimientos = await MovimientoFinancieroModel.getByOrigen("gasto", id, req.usuario_id);
       for (const mov of movimientos) {
         await MovimientoFinancieroModel.create({
-          fecha: new Date().toISOString().slice(0, 10),
+          fecha: fechaArgentina(),
           tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
           categoria: mov.categoria,
           monto: mov.monto,

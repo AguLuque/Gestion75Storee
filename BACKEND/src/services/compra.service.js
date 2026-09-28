@@ -2,6 +2,7 @@ import CompraModel from "../models/compra.model.js";
 import ProductoModel from "../models/producto.model.js";
 import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import { fechaArgentina } from "../utils/fechas.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import CuentaPorPagarModel from "../models/cuentaPorPagar.model.js";
 import { CATEGORIAS_COSTO } from "../constants/finanzas.js";
@@ -116,7 +117,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
         compra_id: compra.id,
         proveedor_id: proveedor_id ?? null,
         monto_total: total + (Number(costo_envio) || 0),
-        fecha_emision: compra.fecha,
+        fecha_emision: fechaArgentina(compra.fecha),
         fecha_vencimiento: null,
         usuario_id,
       });
@@ -127,7 +128,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
       }
 
       await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: compra.fecha,
+        fecha: fechaArgentina(compra.fecha),
         tipo: "egreso",
         categoria: CATEGORIAS_COSTO.COSTO_MERCADERIA,
         monto: total,
@@ -141,7 +142,7 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
       const costoEnvioNumerico = Number(costo_envio) || 0;
       if (costoEnvioNumerico > 0) {
         await MovimientoFinancieroModel.createEnTransaccion(client, {
-          fecha: compra.fecha,
+          fecha: fechaArgentina(compra.fecha),
           tipo: "egreso",
           categoria: CATEGORIAS_COSTO.FLETE,
           monto: costoEnvioNumerico,
@@ -254,7 +255,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
 
     for (const mov of movimientosOriginales) {
       await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaArgentina(),
         tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
         categoria: mov.categoria,
         monto: mov.monto,
@@ -288,7 +289,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
       }
 
       await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaArgentina(),
         tipo: "egreso",
         categoria: CATEGORIAS_COSTO.COSTO_MERCADERIA,
         monto: total,
@@ -302,7 +303,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
       const costoEnvioNumerico = Number(costo_envio) || 0;
       if (costoEnvioNumerico > 0) {
         await MovimientoFinancieroModel.createEnTransaccion(client, {
-          fecha: new Date().toISOString().slice(0, 10),
+          fecha: fechaArgentina(),
           tipo: "egreso",
           categoria: CATEGORIAS_COSTO.FLETE,
           monto: costoEnvioNumerico,
@@ -356,7 +357,7 @@ const eliminarCompra = async (id, usuario_id) => {
 
     for (const mov of movimientosOriginales) {
       await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: fechaArgentina(),
         tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
         categoria: mov.categoria,
         monto: mov.monto,

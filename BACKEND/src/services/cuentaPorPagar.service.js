@@ -5,6 +5,7 @@
 import CuentaPorPagarModel from "../models/cuentaPorPagar.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
+import { fechaArgentina } from "../utils/fechas.js";
 import { CATEGORIAS_COSTO, ORIGEN_TIPOS } from "../constants/finanzas.js";
 import pool from "../config/db.js";
 
@@ -36,7 +37,7 @@ const registrarPago = async (cuentaPorPagarId, { monto, cuenta_dinero_id }, usua
     const actualizada = await CuentaPorPagarModel.registrarPagoEnTransaccion(client, cuentaPorPagarId, monto, usuario_id);
 
     await MovimientoFinancieroModel.createEnTransaccion(client, {
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: fechaArgentina(),
       tipo: "egreso",
       categoria: CATEGORIAS_COSTO.COSTO_MERCADERIA,
       monto,

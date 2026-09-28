@@ -7,13 +7,14 @@
 // combina ambos como una foto "a hoy".
 
 import pool from "../config/db.js";
+import { ZONA_HORARIA_NEGOCIO } from "../utils/fechas.js";
 
 const ReporteModel = {
   getEstadoResultados: async (desde, hasta, usuario_id) => {
     const { rows: ventasRows } = await pool.query(
       `SELECT COALESCE(SUM(total), 0) AS ingresos_por_ventas, COALESCE(SUM(comision), 0) AS comisiones
        FROM ventas
-       WHERE activo = true AND usuario_id = $1 AND fecha::date BETWEEN $2 AND $3`,
+       WHERE activo = true AND usuario_id = $1 AND (fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
       [usuario_id, desde, hasta]
     );
 
@@ -21,14 +22,14 @@ const ReporteModel = {
       `SELECT COALESCE(SUM(vi.cantidad * vi.costo_unitario), 0) AS costo_mercaderia_vendida
        FROM venta_items vi
        JOIN ventas v ON v.id = vi.venta_id
-       WHERE v.activo = true AND v.usuario_id = $1 AND v.fecha::date BETWEEN $2 AND $3`,
+       WHERE v.activo = true AND v.usuario_id = $1 AND (v.fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
       [usuario_id, desde, hasta]
     );
 
     const { rows: gastosRows } = await pool.query(
       `SELECT COALESCE(SUM(monto), 0) AS gastos_operativos
        FROM gastos
-       WHERE usuario_id = $1 AND fecha::date BETWEEN $2 AND $3`,
+       WHERE usuario_id = $1 AND (fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
       [usuario_id, desde, hasta]
     );
 
