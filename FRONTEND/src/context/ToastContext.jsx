@@ -16,7 +16,10 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ mostrarToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {/* z-[70]: por encima de todo, incluido el Modal/Drawer (z-50, con fondo
+          borroso) y los desplegables de Select/buscador (z-[60]); si no, los
+          avisos que salen con un modal abierto quedan tapados detrás. */}
+      <div className="fixed bottom-4 right-4 z-[70] flex flex-col gap-2">
         {toasts.map(toast => (
           <div
             key={toast.id}
