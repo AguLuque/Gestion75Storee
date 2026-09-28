@@ -1,7 +1,9 @@
+import { Children, Fragment, isValidElement, useId } from 'react';
 import { cn } from '../../utils.js';
 import { X, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Drawer as DrawerPrimitive } from 'vaul';
+import { Select as SelectRadix, SelectTrigger, SelectValue, SelectContent, SelectItem } from './select.jsx';
 
 // --- Botón ---
 export function Boton({ children, variante = 'primario', tamaño = 'md', className, ...props }) {
@@ -46,20 +48,86 @@ export function Input({ label, error, className, ...props }) {
 }
 
 // --- Select ---
-export function Select({ label, error, children, className, ...props }) {
+// Misma API que un <select> nativo (label, error, value, onChange(e) con
+// e.target.value, required, name, disabled, children <option>), pero por dentro
+// es el Select de shadcn/Radix: abre siempre hacia abajo y con alto máximo.
+// Los <option> se convierten a SelectItem, así los formularios no cambian.
+
+// Radix no admite value="" en un ítem: la opción vacía ("Sin categoría",
+// "Sin proveedor"...) viaja internamente con este valor y se traduce de vuelta.
+const VALOR_VACIO = '__vacio__';
+
+function opcionesDesdeChildren(children, opciones = []) {
+  Children.forEach(children, hijo => {
+    if (!isValidElement(hijo)) return;
+    if (hijo.type === Fragment) {
+      opcionesDesdeChildren(hijo.props.children, opciones);
+    } else if (hijo.type === 'option') {
+      opciones.push({
+        valor: String(hijo.props.value ?? ''),
+        etiqueta: hijo.props.children,
+        disabled: hijo.props.disabled,
+      });
+    }
+  });
+  return opciones;
+}
+
+export function Select({ label, error, children, className, value, onChange, required, name, disabled, id, placeholder, ...props }) {
+  const idGenerado = useId();
+  const idTrigger = id || idGenerado;
+  const valorActual = value === null || value === undefined ? '' : String(value);
+  const opciones = opcionesDesdeChildren(children);
+  const opcionVacia = opciones.find(o => o.valor === '');
+
+  // En un select obligatorio la opción vacía ("Seleccionar...") es solo un
+  // placeholder: no se puede elegir, y el valor real queda "" para que la
+  // validación nativa del form (required) siga bloqueando el envío.
+  const vaciaComoPlaceholder = required && opcionVacia;
+  const items = vaciaComoPlaceholder ? opciones.filter(o => o.valor !== '') : opciones;
+  const valorRadix = valorActual === '' && !vaciaComoPlaceholder && opcionVacia ? VALOR_VACIO : valorActual;
+
+  function cambiar(nuevoValor) {
+    const valor = nuevoValor === VALOR_VACIO ? '' : nuevoValor;
+    onChange?.({ target: { value: valor, name }, currentTarget: { value: valor, name } });
+  }
+
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-xs font-medium text-slate-600">{label}</label>}
-      <select
-        className={cn(
-          'border border-slate-200 rounded-lg px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-colors',
-          error && 'border-red-400',
-          className
+      {label && <label htmlFor={idTrigger} className="text-xs font-medium text-slate-600">{label}</label>}
+      <div className="relative">
+        <SelectRadix value={valorRadix} onValueChange={cambiar} name={name} disabled={disabled}>
+          <SelectTrigger
+            id={idTrigger}
+            aria-invalid={error ? true : undefined}
+            aria-required={required || undefined}
+            className={cn(error && 'border-red-400 focus:ring-red-400', className)}
+            {...props}
+          >
+            <SelectValue placeholder={vaciaComoPlaceholder ? opcionVacia.etiqueta : (placeholder ?? 'Seleccionar...')} />
+          </SelectTrigger>
+          <SelectContent>
+            {items.map(o => (
+              <SelectItem key={o.valor || VALOR_VACIO} value={o.valor || VALOR_VACIO} disabled={o.disabled}>
+                {o.etiqueta}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </SelectRadix>
+        {/* Validación nativa de "required": el <select> oculto de Radix no la
+            respeta con valor "" (el navegador le elige la primera opción), así
+            que la hace este input invisible, con el aviso debajo del trigger. */}
+        {required && (
+          <input
+            tabIndex={-1}
+            aria-hidden="true"
+            required
+            value={valorActual}
+            onChange={() => {}}
+            className="absolute inset-x-0 bottom-0 h-px opacity-0 pointer-events-none"
+          />
         )}
-        {...props}
-      >
-        {children}
-      </select>
+      </div>
       {error && <span className="text-xs text-red-500">{error}</span>}
     </div>
   );
