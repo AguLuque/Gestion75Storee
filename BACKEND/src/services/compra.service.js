@@ -198,7 +198,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
       if (nuevoTotal < yaPagado) {
         throw {
           status: 400,
-          message: `Ya pagaste $${yaPagado} de esta compra: el nuevo total ($${nuevoTotal}) no puede ser menor.`,
+          message: `Ya pagaste $${yaPagado.toLocaleString("es-AR")} de esta compra: el nuevo total ($${nuevoTotal.toLocaleString("es-AR")}) no puede ser menor.`,
         };
       }
       const nuevoSaldo = redondear(nuevoTotal - yaPagado);
