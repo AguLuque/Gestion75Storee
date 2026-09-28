@@ -64,6 +64,16 @@ const verificarPropiedad = async (client, item, usuario_id) => {
   }
 };
 
+// Cuenta del pago vigente de una compra: la del último egreso de mercadería
+// (el de id más alto; las reversiones son ingresos y las ediciones anteriores
+// dejan egresos más viejos). null si la compra nunca se pagó desde una cuenta.
+const cuentaDelPagoVigente = (movimientos) => {
+  const ultimoEgreso = movimientos
+    .filter((m) => m.tipo === "egreso" && m.categoria === CATEGORIAS_COSTO.COSTO_MERCADERIA)
+    .sort((a, b) => Number(b.id) - Number(a.id))[0];
+  return ultimoEgreso?.cuenta_dinero_id ?? null;
+};
+
 const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, estado_pago, items, usuario_id }) => {
   validarCabecera({ tipo, costo_envio, estado_pago });
   validarItems(items);
@@ -225,10 +235,21 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
       });
     }
 
-    if (cuenta_dinero_id) {
-      const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
+    // Cuenta con la que se vuelve a registrar el pago. Si no se indica una
+    // nueva, se mantiene la del pago vigente: sin esto, editar una compra
+    // pagada (el formulario no manda cuenta) revertía el pago y no lo volvía
+    // a registrar, y la cuenta quedaba con más plata de la real.
+    const cuentaDestino = cuenta_dinero_id || cuentaDelPagoVigente(movimientosOriginales);
+
+    if (cuentaDestino) {
+      const cuenta = await CuentaDineroModel.getById(cuentaDestino, usuario_id);
       if (!cuenta) {
-        throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };
+        throw {
+          status: 400,
+          message: cuenta_dinero_id
+            ? "La cuenta de dinero indicada no existe o no pertenece al usuario."
+            : "La cuenta con la que se pagó esta compra ya no existe: elegí otra cuenta que paga.",
+        };
       }
 
       await MovimientoFinancieroModel.createEnTransaccion(client, {
@@ -236,7 +257,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
         tipo: "egreso",
         categoria: CATEGORIAS_COSTO.COSTO_MERCADERIA,
         monto: total,
-        cuenta_dinero_id,
+        cuenta_dinero_id: cuentaDestino,
         origen_tipo: "compra",
         origen_id: id,
         descripcion: `Compra #${id} (editada)`,
@@ -250,7 +271,7 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
           tipo: "egreso",
           categoria: CATEGORIAS_COSTO.FLETE,
           monto: costoEnvioNumerico,
-          cuenta_dinero_id,
+          cuenta_dinero_id: cuentaDestino,
           origen_tipo: "compra",
           origen_id: id,
           descripcion: `Flete compra #${id} (editada)`,

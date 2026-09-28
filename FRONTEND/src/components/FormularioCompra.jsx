@@ -157,11 +157,12 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
 
         {!aCredito && (
           <Select
-            label="Cuenta que paga (opcional)"
+            label={compraInicial ? 'Cambiar cuenta que paga (opcional)' : 'Cuenta que paga (opcional)'}
             value={cuentaDineroId}
             onChange={e => setCuentaDineroId(e.target.value)}
           >
-            <option value="">Sin registrar en ninguna cuenta</option>
+            {/* Al editar, no elegir cuenta mantiene la del pago original (el backend la conserva) */}
+            <option value="">{compraInicial ? 'Mantener la cuenta original' : 'Sin registrar en ninguna cuenta'}</option>
             {cuentasDinero.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </Select>
         )}
