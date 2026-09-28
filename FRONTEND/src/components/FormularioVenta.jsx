@@ -3,9 +3,18 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Boton, Select, Textarea, Input } from './ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
 import { InputPrecio } from './ui/index.jsx';
+import { SelectorProducto } from './ui/selector-producto.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
+
+// Stock disponible al lado de cada producto del buscador (≤2 = bajo stock,
+// mismo umbral que /productos/bajo-stock)
+function detalleStock(producto) {
+  const stock = Number(producto.stock_actual) || 0;
+  if (stock <= 0) return <span className="font-medium text-red-500">Sin stock</span>;
+  return <span className={stock <= 2 ? 'font-medium text-amber-600' : 'text-slate-500'}>{stock} u.</span>;
+}
 
 export default function FormularioVenta({ productos, cuentasDinero = [], onGuardar, guardando, onCancelar }) {
   const [tipo, setTipo] = useState('minorista');
@@ -187,18 +196,14 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
         <label className="text-xs font-medium text-slate-600">Productos</label>
         {items.map((item, idx) => (
           <div key={idx} className="flex gap-2 items-end">
-            <div className="flex-1">
-              <select
+            <div className="flex-1 min-w-0">
+              <SelectorProducto
+                productos={productos}
                 value={item.producto_id}
-                onChange={e => actualizarItem(idx, 'producto_id', e.target.value)}
-                className="w-full text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                onChange={id => actualizarItem(idx, 'producto_id', id)}
+                detalle={detalleStock}
                 required
-              >
-                <option value="">Seleccionar...</option>
-                {productos.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre} ({p.stock_actual} u.)</option>
-                ))}
-              </select>
+              />
             </div>
             <div className="w-20">
               <input

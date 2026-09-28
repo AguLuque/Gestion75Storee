@@ -2,11 +2,19 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Boton, Select, Textarea, Input, InputPrecio, Modal } from './ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
+import { SelectorProducto } from './ui/selector-producto.jsx';
 import { productosApi, categoriasApi } from '../services/api.js';
 import { useAccion } from '../hooks/useDatos.js';
 import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
+
+// Precio de compra actual al lado de cada producto del buscador
+function detallePrecioCompra(producto) {
+  return Number(producto.precio_compra) > 0
+    ? <span className="text-slate-500">{formatearPrecio(producto.precio_compra)}</span>
+    : <span className="text-slate-400">Sin precio</span>;
+}
 
 const TIPOS_COMPRA = [
   { valor: 'local', etiqueta: 'Local' },
@@ -167,16 +175,14 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
           </div>
           {items.map((item, idx) => (
             <div key={idx} className="flex gap-2 items-end">
-              <div className="flex-1">
-                <select
+              <div className="flex-1 min-w-0">
+                <SelectorProducto
+                  productos={productos}
                   value={item.producto_id}
-                  onChange={e => actualizarItem(idx, 'producto_id', e.target.value)}
-                  className="w-full text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  onChange={id => actualizarItem(idx, 'producto_id', id)}
+                  detalle={detallePrecioCompra}
                   required
-                >
-                  <option value="">Seleccionar...</option>
-                  {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
+                />
               </div>
               <input type="number" min="1" value={item.cantidad}
                 onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}

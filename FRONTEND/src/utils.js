@@ -23,6 +23,23 @@ export function cn(...clases) {
   return clases.filter(Boolean).join(' ');
 }
 
+// Minúsculas y sin tildes, para comparar búsquedas ("remera" encuentra "Reméra")
+export function normalizarTexto(texto) {
+  return String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+// Filtra productos en el cliente: cada palabra de la búsqueda tiene que aparecer
+// en el nombre, la categoría o el código/SKU (si el producto lo tiene), en
+// cualquier orden. "rem neg" encuentra "Remera negra talle M".
+export function filtrarProductos(productos, busqueda) {
+  const palabras = normalizarTexto(busqueda).split(/\s+/).filter(Boolean);
+  if (palabras.length === 0) return productos;
+  return productos.filter(p => {
+    const texto = normalizarTexto([p.nombre, p.categoria_nombre, p.codigo, p.sku].filter(Boolean).join(' '));
+    return palabras.every(palabra => texto.includes(palabra));
+  });
+}
+
 // Badge de color según tipo de venta
 export function colorTipoVenta(tipo) {
   return tipo === 'mayorista'
