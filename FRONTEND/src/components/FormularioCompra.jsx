@@ -44,6 +44,9 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
   const [nuevoProducto, setNuevoProducto] = useState({ nombre: '', categoria_id: '', precio_compra: '', precio_minorista: '', precio_mayorista: '' });
   const [categorias, setCategorias] = useState([]);
   const { ejecutar, cargando: creandoProducto } = useAccion();
+  // estado_pago queda en 'pendiente' desde que se registró a crédito (aunque
+  // después se pague desde "Por pagar"): marca que la compra se hizo a crédito.
+  const esCompraACredito = compraInicial?.estado_pago === 'pendiente';
   const { mostrarToast } = useToast();
 
   useEffect(() => {
@@ -155,7 +158,15 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
           </div>
         )}
 
-        {!aCredito && (
+        {/* Editando una compra a crédito: la deuda se ajusta sola y los pagos se
+            registran desde "Por pagar", así que no se ofrece cuenta que paga. */}
+        {esCompraACredito && (
+          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">
+            Compra a crédito: el saldo pendiente se ajusta al nuevo total. Los pagos se registran desde “Por pagar”.
+          </p>
+        )}
+
+        {!aCredito && !esCompraACredito && (
           <Select
             label={compraInicial ? 'Cambiar cuenta que paga (opcional)' : 'Cuenta que paga (opcional)'}
             value={cuentaDineroId}

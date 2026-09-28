@@ -9,7 +9,7 @@ const CompraModel = {
   // Listar todas las compras con sus ítems agrupados
   getAll: async (usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio,
+    SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio, c.estado_pago,
       p.nombre AS proveedor,
       json_agg(json_build_object(
         'producto_id', ci.producto_id,
@@ -31,7 +31,7 @@ const CompraModel = {
 
   getById: async (id, usuario_id) => {
     const { rows } = await pool.query(`
-    SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio,
+    SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio, c.estado_pago,
       p.nombre AS proveedor,
       json_agg(json_build_object(
         'producto_id', ci.producto_id,

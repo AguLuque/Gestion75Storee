@@ -64,6 +64,8 @@ const verificarPropiedad = async (client, item, usuario_id) => {
   }
 };
 
+const redondear = (n) => Math.round(n * 100) / 100;
+
 // Cuenta del pago vigente de una compra: la del último egreso de mercadería
 // (el de id más alto; las reversiones son ingresos y las ediciones anteriores
 // dejan egresos más viejos). null si la compra nunca se pagó desde una cuenta.
@@ -181,6 +183,35 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
       throw { status: 404, message: "Compra no encontrada." };
     }
 
+    // Compra a crédito: la deuda vive en su cuenta por pagar, que se ajusta al
+    // nuevo total (conservando lo ya pagado). No se registra ningún pago acá:
+    // eso pasa solo desde "Por pagar". Se valida antes de tocar stock.
+    const { rows: cxpRows } = await client.query(
+      `SELECT * FROM cuentas_por_pagar WHERE compra_id = $1 AND activo = true AND usuario_id = $2 FOR UPDATE`,
+      [id, usuario_id]
+    );
+    const cuentaPorPagar = cxpRows[0] || null;
+
+    if (cuentaPorPagar) {
+      const yaPagado = redondear(Number(cuentaPorPagar.monto_total) - Number(cuentaPorPagar.saldo_pendiente));
+      const nuevoTotal = redondear(total + (Number(costo_envio) || 0));
+      if (nuevoTotal < yaPagado) {
+        throw {
+          status: 400,
+          message: `Ya pagaste $${yaPagado} de esta compra: el nuevo total ($${nuevoTotal}) no puede ser menor.`,
+        };
+      }
+      const nuevoSaldo = redondear(nuevoTotal - yaPagado);
+      const nuevoEstado = nuevoSaldo === 0 ? "pagado" : yaPagado > 0 ? "parcial" : "pendiente";
+
+      await client.query(
+        `UPDATE cuentas_por_pagar
+         SET monto_total = $1, saldo_pendiente = $2, estado = $3, proveedor_id = $4
+         WHERE id = $5 AND usuario_id = $6`,
+        [nuevoTotal, nuevoSaldo, nuevoEstado, proveedor_id ?? null, cuentaPorPagar.id, usuario_id]
+      );
+    }
+
     for (const item of items) {
       await verificarPropiedad(client, item, usuario_id);
     }
@@ -239,7 +270,11 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
     // nueva, se mantiene la del pago vigente: sin esto, editar una compra
     // pagada (el formulario no manda cuenta) revertía el pago y no lo volvía
     // a registrar, y la cuenta quedaba con más plata de la real.
-    const cuentaDestino = cuenta_dinero_id || cuentaDelPagoVigente(movimientosOriginales);
+    // En una compra a crédito no se registra pago aunque llegue una cuenta:
+    // antes quedaba contada dos veces (egreso + deuda pendiente).
+    const cuentaDestino = cuentaPorPagar
+      ? null
+      : cuenta_dinero_id || cuentaDelPagoVigente(movimientosOriginales);
 
     if (cuentaDestino) {
       const cuenta = await CuentaDineroModel.getById(cuentaDestino, usuario_id);
