@@ -12,23 +12,26 @@ export default function Dashboard() {
     ventasFiltradas: ventas,
     comprasFiltradas: compras,
     gastosFiltrados: gastos,
-    deudores,
+    cuentasPorCobrar,
     cargando
   } = useDatosGlobal();
 
   const listaVentas = Array.isArray(ventas) ? ventas : [];
   const listaCompras = Array.isArray(compras) ? compras : [];
   const listaGastos = Array.isArray(gastos) ? gastos : [];
-  const listaDeudores = Array.isArray(deudores) ? deudores : [];
+  const listaPorCobrar = Array.isArray(cuentasPorCobrar) ? cuentasPorCobrar : [];
   const stats = useMemo(() => {
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0) + Number(c.costo_envio || 0), 0);
     const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
     const gananciaBruta = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0);
     const gananciaNeta = gananciaBruta - totalGastos;
-    const totalDeudasPorCobrar = listaDeudores.filter(d => !d.pagado).reduce((s, d) => s + Number(d.monto || 0), 0);
-    return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalDeudasPorCobrar };
-  }, [listaVentas, listaCompras, listaGastos, listaDeudores]);
+    // Lo que me deben, a hoy: mismo cálculo que "Por cobrar" en Reportes/Balance
+    // (saldo pendiente de las cuentas por cobrar activas, que ya incluyen el
+    // fiado cargado a mano que antes estaba en Deudores). No depende del período.
+    const totalPorCobrar = listaPorCobrar.reduce((s, c) => s + Number(c.saldo_pendiente || 0), 0);
+    return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalPorCobrar };
+  }, [listaVentas, listaCompras, listaGastos, listaPorCobrar]);
 
   // Ranking de productos más vendidos (por unidades) en el período seleccionado
   const masVendidos = useMemo(() => {
@@ -93,11 +96,11 @@ export default function Dashboard() {
         />
 
         <StatCard
-          titulo="Deudas por cobrar"
-          valor={formatearPrecio(stats.totalDeudasPorCobrar)}
+          titulo="Por cobrar"
+          valor={formatearPrecio(stats.totalPorCobrar)}
           icono={<AlertTriangle size={18} />}
           color="azul"
-          onClick={() => navigate('/deudores')}
+          onClick={() => navigate('/cuentas-por-cobrar')}
         />
       </div>
 
