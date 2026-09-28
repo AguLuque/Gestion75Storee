@@ -169,7 +169,7 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-medium text-slate-600">Productos</label>
-            <Boton variante="fantasma" tamaño="sm" type="button" onClick={() => setModalNuevoProducto(true)}>
+            <Boton variante="primario" tamaño="sm" type="button" onClick={() => setModalNuevoProducto(true)}>
               <Plus size={13} /> Nuevo producto
             </Boton>
           </div>
