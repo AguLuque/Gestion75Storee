@@ -8,14 +8,27 @@ import {
   Boton, Card, Modal, InputPrecio, Select,
   Spinner, Tabla, Badge, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
-import { formatearPrecio, formatearFecha } from '../utils.js';
+import { formatearPrecio, formatearFechaDia, diaISO, fechaLocalISO } from '../utils.js';
 
 const COLOR_ESTADO = { pendiente: 'amarillo', parcial: 'azul', cobrado: 'verde' };
 const ETIQUETA_ESTADO = { pendiente: 'Pendiente', parcial: 'Parcial', cobrado: 'Cobrado' };
 
+// Vencida desde el día siguiente al vencimiento, comparando días (no horas UTC)
 function estaVencida(cxc) {
   if (!cxc.fecha_vencimiento || cxc.estado === 'cobrado') return false;
-  return new Date(cxc.fecha_vencimiento) < new Date();
+  return diaISO(cxc.fecha_vencimiento) < fechaLocalISO();
+}
+
+// Primero lo que falta cobrar (vencimiento más próximo arriba, sin fecha al
+// final), después lo ya cobrado. El backend ordena por estado alfabético, que
+// pone las cobradas primero.
+function ordenarCuentas(lista) {
+  return [...lista].sort((a, b) => {
+    const cerradaA = a.estado === 'cobrado', cerradaB = b.estado === 'cobrado';
+    if (cerradaA !== cerradaB) return cerradaA ? 1 : -1;
+    const vencA = diaISO(a.fecha_vencimiento) ?? '9999', vencB = diaISO(b.fecha_vencimiento) ?? '9999';
+    return vencA.localeCompare(vencB);
+  });
 }
 
 export default function CuentasPorCobrar() {
@@ -71,7 +84,7 @@ export default function CuentasPorCobrar() {
       <Card className="p-5">
         <Tabla
           columnas={['Cliente', 'Total', 'Pendiente', 'Vencimiento', 'Estado', 'Acciones']}
-          datos={cuentas || []}
+          datos={ordenarCuentas(cuentas || [])}
           vacio="Sin cuentas por cobrar — se generan automáticamente al registrar una venta a crédito"
           onSeleccionar={setDetalleMobile}
           renderCardMobile={(c) => (
@@ -81,7 +94,7 @@ export default function CuentasPorCobrar() {
                 <Badge color={estaVencida(c) ? 'rojo' : COLOR_ESTADO[c.estado]}>
                   {estaVencida(c) ? 'Vencida' : ETIQUETA_ESTADO[c.estado]}
                 </Badge>
-                {c.fecha_vencimiento && <span className="text-xs text-slate-400">{formatearFecha(c.fecha_vencimiento)}</span>}
+                {c.fecha_vencimiento && <span className="text-xs text-slate-400">{formatearFechaDia(c.fecha_vencimiento)}</span>}
               </div>
               <p className="text-sm font-semibold text-slate-800">{formatearPrecio(c.saldo_pendiente)}</p>
             </>
@@ -91,7 +104,7 @@ export default function CuentasPorCobrar() {
               <td className="py-3 pr-4 font-medium text-slate-800">{c.cliente_nombre || 'Sin nombre'}</td>
               <td className="py-3 pr-4 text-slate-500">{formatearPrecio(c.monto_total)}</td>
               <td className="py-3 pr-4 font-semibold text-slate-800">{formatearPrecio(c.saldo_pendiente)}</td>
-              <td className="py-3 pr-4 text-slate-500 text-xs">{c.fecha_vencimiento ? formatearFecha(c.fecha_vencimiento) : '—'}</td>
+              <td className="py-3 pr-4 text-slate-500 text-xs">{c.fecha_vencimiento ? formatearFechaDia(c.fecha_vencimiento) : '—'}</td>
               <td className="py-3 pr-4">
                 <Badge color={estaVencida(c) ? 'rojo' : COLOR_ESTADO[c.estado]}>
                   {estaVencida(c) ? 'Vencida' : ETIQUETA_ESTADO[c.estado]}
@@ -160,8 +173,8 @@ export default function CuentasPorCobrar() {
           <div>
             <DetalleCampo etiqueta="Total" valor={formatearPrecio(detalleMobile.monto_total)} />
             <DetalleCampo etiqueta="Pendiente" valor={formatearPrecio(detalleMobile.saldo_pendiente)} />
-            <DetalleCampo etiqueta="Emitida" valor={formatearFecha(detalleMobile.fecha_emision)} />
-            <DetalleCampo etiqueta="Vencimiento" valor={detalleMobile.fecha_vencimiento ? formatearFecha(detalleMobile.fecha_vencimiento) : '—'} />
+            <DetalleCampo etiqueta="Emitida" valor={formatearFechaDia(detalleMobile.fecha_emision)} />
+            <DetalleCampo etiqueta="Vencimiento" valor={detalleMobile.fecha_vencimiento ? formatearFechaDia(detalleMobile.fecha_vencimiento) : '—'} />
             <DetalleCampo etiqueta="Estado" valor={ETIQUETA_ESTADO[detalleMobile.estado]} />
           </div>
         )}

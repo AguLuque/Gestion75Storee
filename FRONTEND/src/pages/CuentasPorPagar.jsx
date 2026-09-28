@@ -8,14 +8,27 @@ import {
   Boton, Card, Modal, InputPrecio, Select,
   Spinner, Tabla, Badge, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
-import { formatearPrecio, formatearFecha } from '../utils.js';
+import { formatearPrecio, formatearFechaDia, diaISO, fechaLocalISO } from '../utils.js';
 
 const COLOR_ESTADO = { pendiente: 'amarillo', parcial: 'azul', pagado: 'verde' };
 const ETIQUETA_ESTADO = { pendiente: 'Pendiente', parcial: 'Parcial', pagado: 'Pagado' };
 
+// Vencida desde el día siguiente al vencimiento, comparando días (no horas UTC)
 function estaVencida(cxp) {
   if (!cxp.fecha_vencimiento || cxp.estado === 'pagado') return false;
-  return new Date(cxp.fecha_vencimiento) < new Date();
+  return diaISO(cxp.fecha_vencimiento) < fechaLocalISO();
+}
+
+// Primero lo que falta pagar (vencimiento más próximo arriba, sin fecha al
+// final), después lo ya pagado. El backend ordena por estado alfabético, que
+// pone las pagadas primero.
+function ordenarCuentas(lista) {
+  return [...lista].sort((a, b) => {
+    const cerradaA = a.estado === 'pagado', cerradaB = b.estado === 'pagado';
+    if (cerradaA !== cerradaB) return cerradaA ? 1 : -1;
+    const vencA = diaISO(a.fecha_vencimiento) ?? '9999', vencB = diaISO(b.fecha_vencimiento) ?? '9999';
+    return vencA.localeCompare(vencB);
+  });
 }
 
 export default function CuentasPorPagar() {
@@ -32,7 +45,9 @@ export default function CuentasPorPagar() {
   const totalPendiente = activas.reduce((s, c) => s + Number(c.saldo_pendiente), 0);
 
   function nombreProveedor(c) {
-    return (proveedores || []).find(p => p.id === c.proveedor_id)?.nombre || 'Sin proveedor';
+    // proveedores.id es bigint (llega como string) y cuentas_por_pagar.proveedor_id
+    // es integer (llega como número): comparar como string, si no nunca coincide.
+    return (proveedores || []).find(p => String(p.id) === String(c.proveedor_id))?.nombre || 'Sin proveedor';
   }
 
   function abrirPago(cxp) {
@@ -75,7 +90,7 @@ export default function CuentasPorPagar() {
       <Card className="p-5">
         <Tabla
           columnas={['Proveedor', 'Total', 'Pendiente', 'Vencimiento', 'Estado', 'Acciones']}
-          datos={cuentas || []}
+          datos={ordenarCuentas(cuentas || [])}
           vacio="Sin cuentas por pagar — se generan automáticamente al registrar una compra a crédito"
           onSeleccionar={setDetalleMobile}
           renderCardMobile={(c) => (
@@ -85,7 +100,7 @@ export default function CuentasPorPagar() {
                 <Badge color={estaVencida(c) ? 'rojo' : COLOR_ESTADO[c.estado]}>
                   {estaVencida(c) ? 'Vencida' : ETIQUETA_ESTADO[c.estado]}
                 </Badge>
-                {c.fecha_vencimiento && <span className="text-xs text-slate-400">{formatearFecha(c.fecha_vencimiento)}</span>}
+                {c.fecha_vencimiento && <span className="text-xs text-slate-400">{formatearFechaDia(c.fecha_vencimiento)}</span>}
               </div>
               <p className="text-sm font-semibold text-slate-800">{formatearPrecio(c.saldo_pendiente)}</p>
             </>
@@ -95,7 +110,7 @@ export default function CuentasPorPagar() {
               <td className="py-3 pr-4 font-medium text-slate-800">{nombreProveedor(c)}</td>
               <td className="py-3 pr-4 text-slate-500">{formatearPrecio(c.monto_total)}</td>
               <td className="py-3 pr-4 font-semibold text-slate-800">{formatearPrecio(c.saldo_pendiente)}</td>
-              <td className="py-3 pr-4 text-slate-500 text-xs">{c.fecha_vencimiento ? formatearFecha(c.fecha_vencimiento) : '—'}</td>
+              <td className="py-3 pr-4 text-slate-500 text-xs">{c.fecha_vencimiento ? formatearFechaDia(c.fecha_vencimiento) : '—'}</td>
               <td className="py-3 pr-4">
                 <Badge color={estaVencida(c) ? 'rojo' : COLOR_ESTADO[c.estado]}>
                   {estaVencida(c) ? 'Vencida' : ETIQUETA_ESTADO[c.estado]}
@@ -164,8 +179,8 @@ export default function CuentasPorPagar() {
           <div>
             <DetalleCampo etiqueta="Total" valor={formatearPrecio(detalleMobile.monto_total)} />
             <DetalleCampo etiqueta="Pendiente" valor={formatearPrecio(detalleMobile.saldo_pendiente)} />
-            <DetalleCampo etiqueta="Emitida" valor={formatearFecha(detalleMobile.fecha_emision)} />
-            <DetalleCampo etiqueta="Vencimiento" valor={detalleMobile.fecha_vencimiento ? formatearFecha(detalleMobile.fecha_vencimiento) : '—'} />
+            <DetalleCampo etiqueta="Emitida" valor={formatearFechaDia(detalleMobile.fecha_emision)} />
+            <DetalleCampo etiqueta="Vencimiento" valor={detalleMobile.fecha_vencimiento ? formatearFechaDia(detalleMobile.fecha_vencimiento) : '—'} />
             <DetalleCampo etiqueta="Estado" valor={ETIQUETA_ESTADO[detalleMobile.estado]} />
           </div>
         )}

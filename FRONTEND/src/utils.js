@@ -18,6 +18,35 @@ export function formatearFecha(fecha) {
   });
 }
 
+// Formatear una columna DATE de Postgres (sin hora: vencimientos, emisiones).
+// node-pg la manda como medianoche en la zona del servidor (en Railway, UTC:
+// "2026-09-30T00:00:00.000Z"), y formatearla en hora argentina la corre al
+// día anterior (29/09). Leyéndola en UTC se ve el día real, sea cual sea la
+// zona del servidor (UTC o Argentina).
+export function formatearFechaDia(fecha) {
+  if (!fecha) return '-';
+  return new Date(fecha).toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+// "YYYY-MM-DD" de una columna DATE (ver formatearFechaDia), para comparar.
+export function diaISO(fecha) {
+  return fecha ? new Date(fecha).toISOString().slice(0, 10) : null;
+}
+
+// "YYYY-MM-DD" de hoy (u otra fecha) en hora LOCAL. toISOString() da la fecha
+// en UTC: en Argentina, después de las 21 hs ya devuelve el día siguiente.
+export function fechaLocalISO(fecha = new Date()) {
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
 // Unir clases condicionalmente (equivalente simple a clsx)
 export function cn(...clases) {
   return clases.filter(Boolean).join(' ');

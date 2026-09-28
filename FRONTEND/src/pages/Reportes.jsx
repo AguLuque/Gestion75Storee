@@ -3,7 +3,7 @@ import { TrendingUp, FileText, Scale, Waves } from 'lucide-react';
 import { reportesApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { Card, Boton, Spinner, StatCard } from '../components/ui/index.jsx';
-import { formatearPrecio } from '../utils.js';
+import { formatearPrecio, fechaLocalISO } from '../utils.js';
 
 const TABS = [
   { id: 'resumen', etiqueta: 'Resumen' },
@@ -45,13 +45,15 @@ function etiquetaCategoria(categoria) {
   );
 }
 
+// En hora local: con toISOString() (UTC), después de las 21 hs en Argentina
+// "hoy" pasaba a ser mañana.
 function primerDiaDelMes() {
   const hoy = new Date();
-  return new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
+  return fechaLocalISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
 }
 
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return fechaLocalISO();
 }
 
 export default function Reportes() {
