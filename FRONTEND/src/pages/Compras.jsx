@@ -203,7 +203,7 @@ export default function Compras() {
           onGuardar={guardar}
           guardando={guardando}
           onCancelar={() => setModalAbierto(false)}
-          onProductoCreado={'productos'}
+          onProductoCreado={() => recargar('productos')}
         />
       </Modal>
 

@@ -83,12 +83,16 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
       setModalNuevoProducto(false);
       setNuevoProducto({ nombre: '', categoria_id: '', precio_compra: '', precio_minorista: '', precio_mayorista: '' });
       onProductoCreado?.();
-      // Seleccionar el nuevo producto en el último ítem
-      const nuevoId = String(resultado.datos?.id || '');
-      if (nuevoId) {
+      // Seleccionar el nuevo producto en el primer ítem vacío (o en uno nuevo si
+      // todos ya tienen producto), con su precio de compra precargado
+      const creado = resultado.datos;
+      if (creado?.id) {
+        const itemNuevo = { producto_id: String(creado.id), precio_unitario: Number(creado.precio_compra) || '' };
         setItems(prev => {
+          const idxVacio = prev.findIndex(i => !i.producto_id);
+          if (idxVacio === -1) return [...prev, { ...itemVacio(), ...itemNuevo }];
           const copia = [...prev];
-          copia[copia.length - 1] = { ...copia[copia.length - 1], producto_id: nuevoId };
+          copia[idxVacio] = { ...copia[idxVacio], ...itemNuevo };
           return copia;
         });
       }
