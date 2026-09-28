@@ -116,6 +116,14 @@ export default function CuentasDinero() {
   }
 
   const totalDisponible = Object.values(saldos).reduce((s, v) => s + (Number(v) || 0), 0);
+  const algunSaldoFallo = Object.values(saldos).some(v => v === null);
+
+  // undefined = todavía cargando; null = falló la consulta de ese saldo
+  function mostrarSaldo(id) {
+    if (saldos[id] === undefined) return '...';
+    if (saldos[id] === null) return 'Error al cargar';
+    return formatearPrecio(saldos[id]);
+  }
 
   if (cargando) return <Spinner />;
 
@@ -126,6 +134,7 @@ export default function CuentasDinero() {
           <h1 className="text-xl font-bold text-slate-800">Cuentas de dinero</h1>
           <p className="text-sm text-slate-500">
             Disponible total: {cargandoSaldos ? '...' : formatearPrecio(totalDisponible)}
+            {!cargandoSaldos && algunSaldoFallo && <span className="text-red-500"> (sin contar cuentas con error)</span>}
           </p>
         </div>
         <Boton onClick={abrirCrear}>
@@ -146,7 +155,7 @@ export default function CuentasDinero() {
                 <Badge color={COLOR_TIPO[c.tipo]}>{TIPOS_CUENTA.find(t => t.valor === c.tipo)?.etiqueta || c.tipo}</Badge>
               </div>
               <p className="text-sm font-semibold text-slate-800">
-                {saldos[c.id] != null ? formatearPrecio(saldos[c.id]) : '...'}
+                {mostrarSaldo(c.id)}
               </p>
             </>
           )}
@@ -157,7 +166,7 @@ export default function CuentasDinero() {
                 <Badge color={COLOR_TIPO[c.tipo]}>{TIPOS_CUENTA.find(t => t.valor === c.tipo)?.etiqueta || c.tipo}</Badge>
               </td>
               <td className="py-3 pr-4 font-semibold text-slate-800">
-                {saldos[c.id] != null ? formatearPrecio(saldos[c.id]) : '...'}
+                {mostrarSaldo(c.id)}
               </td>
               <td className="py-3 flex items-center gap-1.5">
                 <Boton variante="fantasma" tamaño="sm" onClick={() => setCuentaAjustando(c)} title="Ajuste manual">
@@ -270,6 +279,9 @@ export default function CuentasDinero() {
         titulo={detalleMobile?.nombre}
         footer={detalleMobile && (
           <>
+            <Boton variante="secundario" onClick={() => { setDetalleMobile(null); setCuentaAjustando(detalleMobile); }}>
+              <SlidersHorizontal size={14} /> Ajustar
+            </Boton>
             <Boton variante="secundario" onClick={() => { setDetalleMobile(null); abrirEditar(detalleMobile); }}>
               <Pencil size={14} /> Editar
             </Boton>
@@ -282,7 +294,7 @@ export default function CuentasDinero() {
         {detalleMobile && (
           <div>
             <DetalleCampo etiqueta="Tipo" valor={TIPOS_CUENTA.find(t => t.valor === detalleMobile.tipo)?.etiqueta} />
-            <DetalleCampo etiqueta="Saldo" valor={saldos[detalleMobile.id] != null ? formatearPrecio(saldos[detalleMobile.id]) : '...'} />
+            <DetalleCampo etiqueta="Saldo" valor={mostrarSaldo(detalleMobile.id)} />
           </div>
         )}
       </Drawer>
