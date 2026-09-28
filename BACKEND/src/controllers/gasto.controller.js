@@ -4,6 +4,7 @@ import GastoModel from "../models/gasto.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import { normalizarCategoriaGasto } from "../constants/finanzas.js";
+import GastoService from "../services/gasto.service.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 
@@ -79,8 +80,9 @@ const GastoController = {
       if (metodo_pago && !METODOS_PAGO_VALIDOS.includes(metodo_pago)) {
         return res.status(400).json({ success: false, error: `metodo_pago debe ser uno de: ${METODOS_PAGO_VALIDOS.join(", ")}.` });
       }
-      const gasto = await GastoModel.update(id, { descripcion, monto, categoria, metodo_pago }, req.usuario_id);
-      if (!gasto) return res.status(404).json({ success: false, error: "Gasto no encontrado." });
+      // El servicio también ajusta el movimiento de la cuenta que pagó el gasto
+      // (y devuelve 404 si no existe).
+      const gasto = await GastoService.editarGasto(id, { descripcion, monto, categoria, metodo_pago }, req.usuario_id);
       res.json({ success: true, data: gasto });
     } catch (err) { next(err); }
   },
