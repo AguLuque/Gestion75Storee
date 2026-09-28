@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
-import { ventasApi, productosApi } from '../services/api.js';
+import { ventasApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { Boton, Card, Modal, Badge, Spinner, ModalConfirmar, Drawer, DetalleCampo, CardMobile } from '../components/ui/index.jsx';

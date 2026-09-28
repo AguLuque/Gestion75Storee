@@ -13,9 +13,7 @@ export default function Dashboard() {
     comprasFiltradas: compras,
     gastosFiltrados: gastos,
     deudores,
-    cargando,
-    mesSeleccionado,
-    esMesFuturo
+    cargando
   } = useDatosGlobal();
 
   const listaVentas = Array.isArray(ventas) ? ventas : [];

@@ -5,7 +5,7 @@ import { gastosApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import {
-  Boton, Card, Modal, Input, InputPrecio, Select, Textarea,
+  Boton, Card, Modal, Input, InputPrecio, Select,
   Spinner, Tabla, ModalConfirmar, Badge, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFecha } from '../utils.js';

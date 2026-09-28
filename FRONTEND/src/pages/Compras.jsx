@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
-import { comprasApi, productosApi, proveedoresApi } from '../services/api.js';
+import { comprasApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { Boton, Card, Modal, Spinner, Drawer, DetalleCampo, CardMobile, Badge, ModalConfirmar } from '../components/ui/index.jsx';
@@ -196,6 +196,7 @@ export default function Compras() {
         className="max-w-xl mx-4"
       >
         <FormularioCompra
+          key={compraEditando?.id ?? 'nueva'}
           compraInicial={compraEditando}
           productos={Array.isArray(productos) ? productos : []}
           proveedores={Array.isArray(proveedores) ? proveedores : []}

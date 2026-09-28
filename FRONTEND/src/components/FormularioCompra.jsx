@@ -15,11 +15,21 @@ const TIPOS_COMPRA = [
 ];
 
 export default function FormularioCompra({ compraInicial, productos, proveedores, cuentasDinero = [], onGuardar, guardando, onCancelar, onProductoCreado }) {
-  const [proveedorId, setProveedorId] = useState('');
-  const [items, setItems] = useState([itemVacio()]);
-  const [observaciones, setObservaciones] = useState('');
-  const [tipo, setTipo] = useState('local');
-  const [costoEnvio, setCostoEnvio] = useState('');
+  // El estado se inicializa una sola vez desde compraInicial: el padre remonta el
+  // formulario (key) cada vez que cambia la compra a editar.
+  const [proveedorId, setProveedorId] = useState(compraInicial?.proveedor_id || '');
+  const [items, setItems] = useState(() =>
+    compraInicial?.items?.length
+      ? compraInicial.items.map(i => ({
+        producto_id: String(i.producto_id),
+        cantidad: i.cantidad,
+        precio_unitario: i.precio_unitario,
+      }))
+      : [itemVacio()]
+  );
+  const [observaciones, setObservaciones] = useState(compraInicial?.observaciones || '');
+  const [tipo, setTipo] = useState(compraInicial?.tipo || 'local');
+  const [costoEnvio, setCostoEnvio] = useState(compraInicial?.costo_envio || '');
   const [cuentaDineroId, setCuentaDineroId] = useState('');
   const [aCredito, setACredito] = useState(false);
   const [modalNuevoProducto, setModalNuevoProducto] = useState(false);
@@ -31,30 +41,6 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
   useEffect(() => {
     categoriasApi.listar().then(setCategorias).catch(() => { });
   }, []);
-
-  useEffect(() => {
-    if (compraInicial) {
-      setProveedorId(compraInicial.proveedor_id || '');
-      setObservaciones(compraInicial.observaciones || '');
-      setTipo(compraInicial.tipo || 'local');
-      setCostoEnvio(compraInicial.costo_envio || '');
-      if (compraInicial.items?.length) {
-        setItems(compraInicial.items.map(i => ({
-          producto_id: String(i.producto_id),
-          cantidad: i.cantidad,
-          precio_unitario: i.precio_unitario,
-        })));
-      }
-    } else {
-      setProveedorId('');
-      setObservaciones('');
-      setTipo('local');
-      setCostoEnvio('');
-      setItems([itemVacio()]);
-      setCuentaDineroId('');
-      setACredito(false);
-    }
-  }, [compraInicial]);
 
   function actualizarItem(idx, campo, valor) {
     setItems(prev => {
