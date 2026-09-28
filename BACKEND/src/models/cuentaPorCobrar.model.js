@@ -23,12 +23,13 @@ const CuentaPorCobrarModel = {
     return rows[0] || null;
   },
 
-  create: async ({ venta_id, cliente_nombre, monto_total, fecha_emision, fecha_vencimiento, usuario_id }) => {
+  // Sin venta_id es una deuda manual ("fiado" cargado a mano, antes Deudores).
+  create: async ({ venta_id, cliente_nombre, monto_total, fecha_emision, fecha_vencimiento, observaciones, usuario_id }) => {
     const { rows } = await pool.query(
       `INSERT INTO cuentas_por_cobrar
-         (venta_id, cliente_nombre, monto_total, saldo_pendiente, fecha_emision, fecha_vencimiento, usuario_id)
-       VALUES ($1, $2, $3, $3, $4, $5, $6) RETURNING *`,
-      [venta_id ?? null, cliente_nombre ?? null, monto_total, fecha_emision, fecha_vencimiento ?? null, usuario_id]
+         (venta_id, cliente_nombre, monto_total, saldo_pendiente, fecha_emision, fecha_vencimiento, observaciones, usuario_id)
+       VALUES ($1, $2, $3, $3, $4, $5, $6, $7) RETURNING *`,
+      [venta_id ?? null, cliente_nombre ?? null, monto_total, fecha_emision, fecha_vencimiento ?? null, observaciones ?? null, usuario_id]
     );
     return rows[0];
   },
