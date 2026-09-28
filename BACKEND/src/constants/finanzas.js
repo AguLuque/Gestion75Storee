@@ -44,6 +44,29 @@ export const ORIGEN_TIPOS = {
   AJUSTE_MANUAL: "ajuste_manual",
 };
 
+// Métodos de pago que tienen sentido para cada tipo de cuenta de dinero (ej. no
+// se paga "en efectivo" desde Mercado Pago). Un tipo que no está acá ('otro')
+// admite cualquiera. El frontend usa el mismo mapeo (FRONTEND/src/utils.js)
+// para autocompletar y limitar el selector.
+export const METODOS_PAGO_POR_TIPO_CUENTA = {
+  efectivo: ["efectivo"],
+  banco: ["transferencia", "tarjeta"],
+  billetera_virtual: ["transferencia", "tarjeta"],
+};
+
+const ETIQUETA_TIPO_CUENTA = { efectivo: "efectivo", banco: "banco", billetera_virtual: "billetera virtual", otro: "otro" };
+
+// Sin método indicado se acepta (queda "sin especificar").
+export const esMetodoPagoCompatible = (tipoCuenta, metodoPago) => {
+  const permitidos = METODOS_PAGO_POR_TIPO_CUENTA[tipoCuenta];
+  return !permitidos || !metodoPago || permitidos.includes(metodoPago);
+};
+
+export const errorMetodoPagoIncompatible = (cuenta, metodoPago) => ({
+  status: 400,
+  message: `El método de pago "${metodoPago}" no corresponde a la cuenta "${cuenta.nombre}" (${ETIQUETA_TIPO_CUENTA[cuenta.tipo] || cuenta.tipo}): usá ${METODOS_PAGO_POR_TIPO_CUENTA[cuenta.tipo].join(" o ")}.`,
+});
+
 // Mapea el texto libre actual de gastos.categoria (hoy sugerido pero no
 // restringido en FRONTEND/src/pages/Gastos.jsx: Servicios, Alquiler,
 // Transporte, Marketing, Personal, Impuestos, Otros) a la categoría canónica

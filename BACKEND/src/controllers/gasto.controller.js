@@ -3,7 +3,7 @@
 import GastoModel from "../models/gasto.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
-import { normalizarCategoriaGasto } from "../constants/finanzas.js";
+import { normalizarCategoriaGasto, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
 import GastoService from "../services/gasto.service.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
@@ -48,6 +48,9 @@ const GastoController = {
         const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, req.usuario_id);
         if (!cuenta) {
           return res.status(400).json({ success: false, error: "La cuenta de dinero indicada no existe o no pertenece al usuario." });
+        }
+        if (!esMetodoPagoCompatible(cuenta.tipo, metodo_pago)) {
+          return res.status(400).json({ success: false, error: errorMetodoPagoIncompatible(cuenta, metodo_pago).message });
         }
       }
 

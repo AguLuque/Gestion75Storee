@@ -1,12 +1,19 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Boton, Select, Textarea, Input } from './ui/index.jsx';
-import { formatearPrecio } from '../utils.js';
+import { formatearPrecio, metodosPagoPermitidos, metodoPagoParaCuenta } from '../utils.js';
 import { InputPrecio } from './ui/index.jsx';
 import { SelectorProducto } from './ui/selector-producto.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
+
+const METODOS_PAGO = [
+  { valor: 'efectivo', etiqueta: 'Efectivo' },
+  { valor: 'transferencia', etiqueta: 'Transferencia' },
+  { valor: 'tarjeta', etiqueta: 'Tarjeta' },
+  { valor: 'otro', etiqueta: 'Otro' },
+];
 
 // Stock disponible al lado de cada producto del buscador (≤2 = bajo stock,
 // mismo umbral que /productos/bajo-stock)
@@ -28,6 +35,18 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
   const [clienteNombre, setClienteNombre] = useState('');
   const [fechaVencimiento, setFechaVencimiento] = useState('');
   const { mostrarToast } = useToast();
+
+  // La cuenta que recibe el dinero limita el método de pago a su tipo (Caja ->
+  // efectivo, Mercado Pago -> transferencia/tarjeta). A crédito no hay cuenta.
+  const cuentaElegida = aCredito ? null : cuentasDinero.find(c => String(c.id) === String(cuentaDineroId));
+  const metodosPermitidos = cuentaElegida ? metodosPagoPermitidos(cuentaElegida.tipo) : null;
+  const metodosVisibles = metodosPermitidos ? METODOS_PAGO.filter(m => metodosPermitidos.includes(m.valor)) : METODOS_PAGO;
+
+  function elegirCuenta(id) {
+    setCuentaDineroId(id);
+    const cuenta = cuentasDinero.find(c => String(c.id) === String(id));
+    if (cuenta) setMetodoPago(prev => metodoPagoParaCuenta(cuenta.tipo, prev));
+  }
 
   function actualizarItem(idx, campo, valor) {
     setItems(prev => {
@@ -125,10 +144,7 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
           value={metodoPago}
           onChange={e => setMetodoPago(e.target.value)}
         >
-          <option value="efectivo">Efectivo</option>
-          <option value="transferencia">Transferencia</option>
-          <option value="tarjeta">Tarjeta</option>
-          <option value="otro">Otro</option>
+          {metodosVisibles.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
         </Select>
       </div>
 
@@ -157,7 +173,11 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
           type="checkbox"
           id="venta-a-credito"
           checked={aCredito}
-          onChange={e => setACredito(e.target.checked)}
+          onChange={e => {
+            setACredito(e.target.checked);
+            // Al volver a "cobrada en el momento", la cuenta elegida vuelve a mandar
+            if (!e.target.checked) elegirCuenta(cuentaDineroId);
+          }}
           className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
         />
         <label htmlFor="venta-a-credito" className="text-sm text-slate-600">
@@ -184,7 +204,7 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
         <Select
           label="Cuenta que recibe el dinero (opcional)"
           value={cuentaDineroId}
-          onChange={e => setCuentaDineroId(e.target.value)}
+          onChange={e => elegirCuenta(e.target.value)}
         >
           <option value="">Sin registrar en ninguna cuenta</option>
           {cuentasDinero.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}

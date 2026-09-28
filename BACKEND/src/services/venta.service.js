@@ -14,7 +14,7 @@ import VarianteModel from "../models/variante.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import CuentaPorCobrarModel from "../models/cuentaPorCobrar.model.js";
-import { CATEGORIAS_INGRESO, CATEGORIAS_COSTO } from "../constants/finanzas.js";
+import { CATEGORIAS_INGRESO, CATEGORIAS_COSTO, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
 
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 const CANALES_VALIDOS = ["directa", "mercadolibre"];
@@ -195,6 +195,9 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
       const cuenta = await CuentaDineroModel.getById(cuenta_dinero_id, usuario_id);
       if (!cuenta) {
         throw { status: 400, message: "La cuenta de dinero indicada no existe o no pertenece al usuario." };
+      }
+      if (!esMetodoPagoCompatible(cuenta.tipo, metodo_pago)) {
+        throw errorMetodoPagoIncompatible(cuenta, metodo_pago);
       }
 
       await MovimientoFinancieroModel.createEnTransaccion(client, {

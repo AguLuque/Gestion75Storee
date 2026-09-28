@@ -69,6 +69,28 @@ export function filtrarProductos(productos, busqueda) {
   });
 }
 
+// Métodos de pago compatibles con cada tipo de cuenta de dinero (mismo mapeo
+// que BACKEND/src/constants/finanzas.js, que también lo valida). Un tipo que
+// no está acá ('otro') admite cualquiera.
+const METODOS_PAGO_POR_TIPO_CUENTA = {
+  efectivo: ['efectivo'],
+  banco: ['transferencia', 'tarjeta'],
+  billetera_virtual: ['transferencia', 'tarjeta'],
+};
+
+// Valores de método de pago permitidos para ese tipo de cuenta; null = todos.
+export function metodosPagoPermitidos(tipoCuenta) {
+  return METODOS_PAGO_POR_TIPO_CUENTA[tipoCuenta] ?? null;
+}
+
+// Al elegir una cuenta: si el método actual le corresponde se deja; si no, se
+// pasa al primero permitido (ej. Mercado Pago + "efectivo" -> "transferencia").
+export function metodoPagoParaCuenta(tipoCuenta, metodoActual) {
+  const permitidos = metodosPagoPermitidos(tipoCuenta);
+  if (!permitidos || permitidos.includes(metodoActual)) return metodoActual;
+  return permitidos[0];
+}
+
 // Badge de color según tipo de venta
 export function colorTipoVenta(tipo) {
   return tipo === 'mayorista'

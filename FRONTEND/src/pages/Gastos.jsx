@@ -8,7 +8,7 @@ import {
   Boton, Card, Modal, Input, InputPrecio, Select,
   Spinner, Tabla, ModalConfirmar, Badge, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
-import { formatearPrecio, formatearFecha } from '../utils.js';
+import { formatearPrecio, formatearFecha, metodosPagoPermitidos, metodoPagoParaCuenta } from '../utils.js';
 
 const CATEGORIAS_GASTO = ['Servicios', 'Alquiler', 'Transporte', 'Marketing', 'Personal', 'Impuestos', 'Otros'];
 const METODOS_PAGO = [
@@ -49,6 +49,21 @@ export default function Gastos() {
 
   function actualizar(campo, valor) {
     setFormulario(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  // Elegir la cuenta ajusta el método de pago a su tipo (Caja -> efectivo,
+  // Mercado Pago -> transferencia/tarjeta) y el selector solo ofrece esos.
+  const cuentaElegida = (cuentasDinero || []).find(c => String(c.id) === String(formulario.cuenta_dinero_id));
+  const metodosPermitidos = cuentaElegida ? metodosPagoPermitidos(cuentaElegida.tipo) : null;
+  const metodosVisibles = metodosPermitidos ? METODOS_PAGO.filter(m => metodosPermitidos.includes(m.valor)) : METODOS_PAGO;
+
+  function elegirCuenta(id) {
+    const cuenta = (cuentasDinero || []).find(c => String(c.id) === String(id));
+    setFormulario(prev => ({
+      ...prev,
+      cuenta_dinero_id: id,
+      metodo_pago: cuenta ? metodoPagoParaCuenta(cuenta.tipo, prev.metodo_pago) : prev.metodo_pago,
+    }));
   }
 
   async function guardar(e) {
@@ -169,14 +184,14 @@ export default function Gastos() {
             value={formulario.metodo_pago}
             onChange={e => actualizar('metodo_pago', e.target.value)}
           >
-            <option value="">Sin especificar</option>
-            {METODOS_PAGO.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
+            {!metodosPermitidos && <option value="">Sin especificar</option>}
+            {metodosVisibles.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
           </Select>
           {!gastoEditando && (
             <Select
               label="Cuenta que paga (opcional)"
               value={formulario.cuenta_dinero_id}
-              onChange={e => actualizar('cuenta_dinero_id', e.target.value)}
+              onChange={e => elegirCuenta(e.target.value)}
             >
               <option value="">Sin registrar en ninguna cuenta</option>
               {(cuentasDinero || []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}

@@ -7,7 +7,7 @@
 import pool from "../config/db.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
-import { normalizarCategoriaGasto } from "../constants/finanzas.js";
+import { normalizarCategoriaGasto, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
 
 // Cuenta del pago vigente: la del último egreso del gasto (el de id más alto;
 // las reversiones son ingresos). null si nunca se pagó desde una cuenta.
@@ -47,25 +47,34 @@ const editarGasto = async (id, { descripcion, monto, categoria, metodo_pago }, u
     const cambioMonto = Number(anterior.monto) !== Number(actualizado.monto);
     const cambioCategoria =
       normalizarCategoriaGasto(anterior.categoria) !== normalizarCategoriaGasto(actualizado.categoria);
+    const cambioMetodo = (anterior.metodo_pago ?? null) !== (actualizado.metodo_pago ?? null);
+    const ajustaMovimiento = cambioMonto || cambioCategoria;
 
-    if (cambioMonto || cambioCategoria) {
+    if (ajustaMovimiento || cambioMetodo) {
       const { rows: movimientos } = await client.query(
         `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'gasto' AND origen_id = $1 AND usuario_id = $2`,
         [id, usuario_id]
       );
       const cuentaId = cuentaDelPagoVigente(movimientos);
 
-      // Gasto que nunca se pagó desde una cuenta: no hay nada que ajustar.
-      if (cuentaId) {
-        const cuenta = await CuentaDineroModel.getById(cuentaId, usuario_id);
-        if (!cuenta) {
-          throw {
-            status: 400,
-            message:
-              "La cuenta con la que se pagó este gasto fue eliminada: no se puede cambiar el monto ni la categoría. Eliminá el gasto y cargalo de nuevo.",
-          };
-        }
+      // Gasto que nunca se pagó desde una cuenta: no hay nada que ajustar ni validar.
+      const cuenta = cuentaId ? await CuentaDineroModel.getById(cuentaId, usuario_id) : null;
 
+      if (cuentaId && !cuenta && ajustaMovimiento) {
+        throw {
+          status: 400,
+          message:
+            "La cuenta con la que se pagó este gasto fue eliminada: no se puede cambiar el monto ni la categoría. Eliminá el gasto y cargalo de nuevo.",
+        };
+      }
+
+      // El método tiene que seguir correspondiendo a la cuenta que pagó
+      // (ej. no pasar a "efectivo" un gasto pagado con Mercado Pago).
+      if (cuenta && cambioMetodo && !esMetodoPagoCompatible(cuenta.tipo, actualizado.metodo_pago)) {
+        throw errorMetodoPagoIncompatible(cuenta, actualizado.metodo_pago);
+      }
+
+      if (cuenta && ajustaMovimiento) {
         // Mismo criterio que editar una compra: se revierten todos los
         // movimientos del gasto y se registra el egreso con los datos nuevos.
         for (const mov of movimientos) {
