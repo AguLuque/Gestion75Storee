@@ -174,8 +174,10 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
             </Boton>
           </div>
           {items.map((item, idx) => (
-            <div key={idx} className="flex gap-2 items-end">
-              <div className="flex-1 min-w-0">
+            // En mobile el producto va en su propia línea y cantidad + precio
+            // debajo, agrupados en un recuadro; desde md: todo en una fila.
+            <div key={idx} className="flex flex-wrap md:flex-nowrap gap-2 items-end rounded-lg border border-slate-100 p-2 md:border-0 md:p-0">
+              <div className="flex-1 basis-full md:basis-0 min-w-0">
                 <SelectorProducto
                   productos={productos}
                   value={item.producto_id}
@@ -187,12 +189,14 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
               <input type="number" min="1" value={item.cantidad}
                 onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}
                 placeholder="Cant." className="w-20 text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-              <InputPrecio
-                valorInicial={item.precio_unitario}
-                onCambio={valor =>
-                  actualizarItem(idx, 'precio_unitario', valor)
-                }
-              />
+              <div className="flex-1 md:flex-initial">
+                <InputPrecio
+                  valorInicial={item.precio_unitario}
+                  onCambio={valor =>
+                    actualizarItem(idx, 'precio_unitario', valor)
+                  }
+                />
+              </div>
               {items.length > 1 && (
                 <Boton variante="peligro" tamaño="sm" type="button" onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}>
                   <Trash2 size={14} />

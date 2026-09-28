@@ -195,8 +195,10 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
       <div className="space-y-3">
         <label className="text-xs font-medium text-slate-600">Productos</label>
         {items.map((item, idx) => (
-          <div key={idx} className="flex gap-2 items-end">
-            <div className="flex-1 min-w-0">
+          // En mobile el producto va en su propia línea y cantidad + precio
+          // debajo, agrupados en un recuadro; desde md: todo en una fila.
+          <div key={idx} className="flex flex-wrap md:flex-nowrap gap-2 items-end rounded-lg border border-slate-100 p-2 md:border-0 md:p-0">
+            <div className="flex-1 basis-full md:basis-0 min-w-0">
               <SelectorProducto
                 productos={productos}
                 value={item.producto_id}
@@ -216,7 +218,7 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
                 required
               />
             </div>
-            <div className="w-28">
+            <div className="flex-1 md:flex-none md:w-28">
               <InputPrecio
                 valorInicial={item.precio_unitario}
                 onCambio={valor => actualizarItem(idx, 'precio_unitario', valor)}
