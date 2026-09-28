@@ -118,6 +118,10 @@ export const cuentasDineroApi = {
 // Cuentas por cobrar (ventas a crédito pendientes)
 export const cuentasPorCobrarApi = {
   listar: () => peticion('/cuentas-por-cobrar'),
+  // Deudas manuales (sin venta): alta, edición y anulación
+  crear: (datos) => peticion('/cuentas-por-cobrar', { method: 'POST', body: JSON.stringify(datos) }),
+  actualizar: (id, datos) => peticion(`/cuentas-por-cobrar/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
+  anular: (id) => peticion(`/cuentas-por-cobrar/${id}`, { method: 'DELETE' }),
   registrarCobro: (id, datos) => peticion(`/cuentas-por-cobrar/${id}/cobro`, { method: 'POST', body: JSON.stringify(datos) }),
 };
 
