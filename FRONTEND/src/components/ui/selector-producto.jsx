@@ -8,15 +8,35 @@ import { cn, filtrarProductos } from '../../utils.js';
 import { Popover, PopoverTrigger, PopoverContent } from './popover.jsx';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from './command.jsx';
 
+const COLLISION_PADDING = 8;
+// Alto del desplegable abierto hacia abajo: buscador (~41px) + lista de 16rem
+// + bordes y separación del trigger. Si abajo no hay este espacio, abre arriba.
+const ALTO_ABIERTO_ABAJO = 41 + 256 + 8;
+
 export function SelectorProducto({ productos, value, onChange, detalle, required, placeholder = 'Seleccionar producto...', className }) {
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [lado, setLado] = useState('bottom');
   const inputBusqueda = useRef(null);
+  const triggerRef = useRef(null);
   const valorActual = value === null || value === undefined ? '' : String(value);
   const seleccionado = productos.find(p => String(p.id) === valorActual);
   const resultados = useMemo(() => filtrarProductos(productos, busqueda), [productos, busqueda]);
 
+  // El lado se decide una sola vez, al abrir, y queda fijo mientras está
+  // abierto. Con avoidCollisions de Radix el lado se recalcula en cada cambio
+  // de tamaño: al filtrar, la lista se achica, pasa a "entrar" abajo y salta
+  // de arriba a abajo mientras se escribe.
+  function ladoAlAbrir() {
+    const trigger = triggerRef.current?.getBoundingClientRect();
+    if (!trigger) return 'bottom';
+    const espacioAbajo = window.innerHeight - trigger.bottom - COLLISION_PADDING;
+    const espacioArriba = trigger.top - COLLISION_PADDING;
+    return espacioAbajo >= ALTO_ABIERTO_ABAJO || espacioAbajo >= espacioArriba ? 'bottom' : 'top';
+  }
+
   function cambiarAbierto(nuevo) {
+    if (nuevo && !abierto) setLado(ladoAlAbrir());
     setAbierto(nuevo);
     if (!nuevo) setBusqueda('');
   }
@@ -48,7 +68,7 @@ export function SelectorProducto({ productos, value, onChange, detalle, required
       // rápido, las teclas que llegan antes de que el foco pase al buscador
       // no se pierden.
       setBusqueda(prev => prev + e.key);
-      setAbierto(true);
+      cambiarAbierto(true);
     }
   }
 
@@ -57,6 +77,7 @@ export function SelectorProducto({ productos, value, onChange, detalle, required
       <Popover open={abierto} onOpenChange={cambiarAbierto}>
         <PopoverTrigger asChild>
           <button
+            ref={triggerRef}
             type="button"
             role="combobox"
             aria-expanded={abierto}
@@ -76,19 +97,21 @@ export function SelectorProducto({ productos, value, onChange, detalle, required
           </button>
         </PopoverTrigger>
 
-        {/* Mismo criterio que el Select: siempre hacia abajo (sin
-            avoidCollisions), lista de hasta 16rem que se achica si abajo no
-            hay lugar. Mínimo 16rem de ancho para que entre nombre + detalle. */}
+        {/* A diferencia del Select, acá la lista es larga: abre hacia abajo si
+            entra y si no, hacia arriba (ver ladoAlAbrir). Lista de hasta 16rem
+            abajo y 25rem arriba (data-side lo pone Radix), siempre limitada
+            al espacio real disponible. Mínimo 16rem de ancho para que entre
+            nombre + detalle. */}
         <PopoverContent
-          side="bottom"
+          side={lado}
           avoidCollisions={false}
-          collisionPadding={8}
-          className="flex w-[var(--radix-popover-trigger-width)] min-w-[16rem] max-h-[var(--radix-popover-content-available-height)] flex-col overflow-hidden p-0"
+          collisionPadding={COLLISION_PADDING}
+          className="group flex w-[var(--radix-popover-trigger-width)] min-w-[16rem] max-h-[var(--radix-popover-content-available-height)] flex-col overflow-hidden p-0"
           onOpenAutoFocus={enfocarBuscador}
         >
           <Command shouldFilter={false} loop className="min-h-0">
             <CommandInput ref={inputBusqueda} value={busqueda} onValueChange={setBusqueda} placeholder="Buscar producto..." />
-            <CommandList className="max-h-64 min-h-0 flex-1">
+            <CommandList className="max-h-64 min-h-0 flex-1 group-data-[side=top]:max-h-[25rem]">
               <CommandEmpty>No hay productos que coincidan.</CommandEmpty>
               <CommandGroup>
                 {resultados.map(p => (
