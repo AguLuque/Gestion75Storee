@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedoresApi, deudoresApi, cuentasDineroApi, cuentasPorCobrarApi, cuentasPorPagarApi } from '../services/api.js';
+import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedoresApi, cuentasDineroApi, cuentasPorCobrarApi, cuentasPorPagarApi } from '../services/api.js';
 
 const DatosContext = createContext(null);
 
@@ -32,7 +32,7 @@ function aplicarFiltro(lista, periodo, campo = 'fecha', mesSeleccionado, añoSel
 export function DatosProvider({ children }) {
   const [datos, setDatos] = useState({
     ventas: [], compras: [], productos: [], gastos: [],
-    categorias: [], proveedores: [], bajoStock: [], deudores: [],
+    categorias: [], proveedores: [], bajoStock: [],
     cuentasDinero: [], cuentasPorCobrar: [], cuentasPorPagar: [],
   });
   const [cargando, setCargando] = useState(true);
@@ -54,13 +54,12 @@ export function DatosProvider({ children }) {
       categoriasApi.listar(),
       proveedoresApi.listar(),
       productosApi.bajoStock(),
-      deudoresApi.listar(),
       cuentasDineroApi.listar(),
       cuentasPorCobrarApi.listar(),
       cuentasPorPagarApi.listar(),
     ]);
 
-    const [ventas, compras, productos, gastos, categorias, proveedores, bajoStock, deudores, cuentasDinero, cuentasPorCobrar, cuentasPorPagar] = resultados;
+    const [ventas, compras, productos, gastos, categorias, proveedores, bajoStock, cuentasDinero, cuentasPorCobrar, cuentasPorPagar] = resultados;
 
     setDatos({
       ventas: ventas.status === 'fulfilled' ? ventas.value : [],
@@ -70,7 +69,6 @@ export function DatosProvider({ children }) {
       categorias: categorias.status === 'fulfilled' ? categorias.value : [],
       proveedores: proveedores.status === 'fulfilled' ? proveedores.value : [],
       bajoStock: bajoStock.status === 'fulfilled' ? bajoStock.value : [],
-      deudores: deudores.status === 'fulfilled' ? deudores.value : [],
       cuentasDinero: cuentasDinero.status === 'fulfilled' ? cuentasDinero.value : [],
       cuentasPorCobrar: cuentasPorCobrar.status === 'fulfilled' ? cuentasPorCobrar.value : [],
       cuentasPorPagar: cuentasPorPagar.status === 'fulfilled' ? cuentasPorPagar.value : [],
@@ -89,7 +87,6 @@ export function DatosProvider({ children }) {
       categorias: categoriasApi.listar,
       proveedores: proveedoresApi.listar,
       bajoStock: productosApi.bajoStock,
-      deudores: deudoresApi.listar,
       cuentasDinero: cuentasDineroApi.listar,
       cuentasPorCobrar: cuentasPorCobrarApi.listar,
       cuentasPorPagar: cuentasPorPagarApi.listar,

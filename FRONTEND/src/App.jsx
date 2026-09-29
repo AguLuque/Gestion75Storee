@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { DatosProvider } from './context/DatosContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
@@ -12,7 +12,6 @@ import Compras from './pages/Compras.jsx';
 import Gastos from './pages/Gastos.jsx';
 import Categorias from './pages/Categorias.jsx';
 import Proveedores from './pages/Proveedores.jsx';
-import Deudores from './pages/Deudores.jsx';
 import CuentasDinero from './pages/CuentasDinero.jsx';
 import CuentasPorCobrar from './pages/CuentasPorCobrar.jsx';
 import CuentasPorPagar from './pages/CuentasPorPagar.jsx';
@@ -42,7 +41,8 @@ export default function App() {
               <Route path="gastos" element={<Gastos />} />
               <Route path="categorias" element={<Categorias />} />
               <Route path="proveedores" element={<Proveedores />} />
-              <Route path="deudores" element={<Deudores />} />
+              {/* Deudores se unificó en Cuentas por cobrar (deudas manuales): el link viejo redirige */}
+              <Route path="deudores" element={<Navigate to="/cuentas-por-cobrar" replace />} />
               <Route path="cuentas-dinero" element={<CuentasDinero />} />
               <Route path="cuentas-por-cobrar" element={<CuentasPorCobrar />} />
               <Route path="cuentas-por-pagar" element={<CuentasPorPagar />} />

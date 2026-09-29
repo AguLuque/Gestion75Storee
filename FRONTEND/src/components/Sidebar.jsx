@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, TrendingUp,
-  Tag, Truck, DollarSign, Users, X, LogOut,
+  Tag, Truck, DollarSign, X, LogOut,
   Wallet, HandCoins, Landmark, FileBarChart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -15,7 +15,6 @@ const items = [
   { a: '/gastos', icono: DollarSign, etiqueta: 'Gastos' },
   { a: '/categorias', icono: Tag, etiqueta: 'Categorías' },
   { a: '/proveedores', icono: Truck, etiqueta: 'Proveedores' },
-  { a: '/deudores', icono: Users, etiqueta: 'Deudores' },
   { a: '/cuentas-dinero', icono: Wallet, etiqueta: 'Cuentas de dinero' },
   { a: '/cuentas-por-cobrar', icono: HandCoins, etiqueta: 'Por cobrar' },
   { a: '/cuentas-por-pagar', icono: Landmark, etiqueta: 'Por pagar' },
