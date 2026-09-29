@@ -4,6 +4,7 @@ import { reportesApi } from '../services/api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { Card, Boton, Spinner, StatCard } from '../components/ui/index.jsx';
 import { formatearPrecio, fechaLocalISO } from '../utils.js';
+import { SelectorFecha } from '../components/ui/selector-fecha.jsx';
 
 const TABS = [
   { id: 'resumen', etiqueta: 'Resumen' },
@@ -96,9 +97,10 @@ export default function Reportes() {
           <p className="text-sm text-slate-500">Resumen, Estado de Resultados, Balance y Flujo de Caja</p>
         </div>
         <div className="flex items-center gap-2">
-          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+          {/* El rango siempre tiene las dos puntas y no se puede invertir */}
+          <SelectorFecha compacto value={desde} onChange={setDesde} max={hasta} permitirVacio={false} />
           <span className="text-slate-400 text-sm">a</span>
-          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+          <SelectorFecha compacto value={hasta} onChange={setHasta} min={desde} permitirVacio={false} />
         </div>
       </div>
 

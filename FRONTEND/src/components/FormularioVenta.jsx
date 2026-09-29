@@ -4,6 +4,7 @@ import { Boton, Select, Textarea, Input } from './ui/index.jsx';
 import { formatearPrecio, metodosPagoPermitidos, metodoPagoParaCuenta } from '../utils.js';
 import { InputPrecio } from './ui/index.jsx';
 import { SelectorProducto } from './ui/selector-producto.jsx';
+import { SelectorFecha } from './ui/selector-fecha.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
 const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
@@ -193,11 +194,10 @@ export default function FormularioVenta({ productos, cuentasDinero = [], onGuard
             onChange={e => setClienteNombre(e.target.value)}
             placeholder="Nombre del cliente"
           />
-          <Input
+          <SelectorFecha
             label="Vence el (opcional)"
-            type="date"
             value={fechaVencimiento}
-            onChange={e => setFechaVencimiento(e.target.value)}
+            onChange={setFechaVencimiento}
           />
         </div>
       ) : (

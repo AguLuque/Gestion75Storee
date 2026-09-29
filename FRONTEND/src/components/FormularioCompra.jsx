@@ -200,7 +200,7 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
               </div>
               <input type="number" min="1" value={item.cantidad}
                 onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}
-                placeholder="Cant." className="w-20 text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                placeholder="Cant." className="w-20 text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" required />
               <div className="flex-1 md:flex-initial">
                 <InputPrecio
                   valorInicial={item.precio_unitario}

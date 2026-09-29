@@ -5,7 +5,7 @@ import { productosApi } from '../services/api.js';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import {
-  Boton, Card, Modal, Badge,
+  Boton, Card, Modal, Badge, Select,
   Spinner, Tabla, ModalConfirmar, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
 import { formatearPrecio } from '../utils.js';
@@ -87,19 +87,21 @@ export default function Productos() {
               placeholder="Buscar producto..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-base md:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-base md:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
-          <select
-            value={filtroCategoria}
-            onChange={e => setFiltroCategoria(e.target.value)}
-            className="text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="">Todas las categorías</option>
-            {(Array.isArray(categorias) ? categorias : []).map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
+          <div className="sm:w-56">
+            <Select
+              aria-label="Filtrar por categoría"
+              value={filtroCategoria}
+              onChange={e => setFiltroCategoria(e.target.value)}
+            >
+              <option value="">Todas las categorías</option>
+              {(Array.isArray(categorias) ? categorias : []).map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </Select>
+          </div>
         </div>
       </Card>
 

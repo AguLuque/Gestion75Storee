@@ -9,6 +9,7 @@ import {
   Spinner, Tabla, Badge, Drawer, DetalleCampo, ModalConfirmar
 } from '../components/ui/index.jsx';
 import { formatearPrecio, formatearFechaDia, diaISO, fechaLocalISO } from '../utils.js';
+import { SelectorFecha } from '../components/ui/selector-fecha.jsx';
 
 const COLOR_ESTADO = { pendiente: 'amarillo', parcial: 'azul', cobrado: 'verde' };
 const ETIQUETA_ESTADO = { pendiente: 'Pendiente', parcial: 'Parcial', cobrado: 'Cobrado' };
@@ -306,11 +307,10 @@ export default function CuentasPorCobrar() {
               placeholder="0"
             />
           )}
-          <Input
+          <SelectorFecha
             label="Vence el (opcional)"
-            type="date"
             value={formulario.fecha_vencimiento}
-            onChange={e => actualizar('fecha_vencimiento', e.target.value)}
+            onChange={valor => actualizar('fecha_vencimiento', valor)}
           />
           <Textarea
             label="Observaciones (opcional)"
