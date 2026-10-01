@@ -79,21 +79,27 @@ const VentaModel = {
     return rows[0];
   },
 
-  // Insertar ítem de venta con snapshot del costo actual
-  insertItem: async (
-    client,
-    { venta_id, producto_id, cantidad, precio_unitario, costo_unitario }
-  ) => {
-    const subtotal = cantidad * precio_unitario;
+  // Insertar todos los ítems de una venta (con snapshot del costo actual) en una sola consulta
+  insertItems: async (client, venta_id, items) => {
     const { rows } = await client.query(
       `
       INSERT INTO venta_items (venta_id, producto_id, cantidad, precio_unitario, costo_unitario, subtotal)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      SELECT $1, i.producto_id, i.cantidad, i.precio_unitario, i.costo_unitario, i.subtotal
+      FROM unnest($2::bigint[], $3::numeric[], $4::numeric[], $5::numeric[], $6::numeric[])
+        WITH ORDINALITY AS i(producto_id, cantidad, precio_unitario, costo_unitario, subtotal, orden)
+      ORDER BY i.orden
       RETURNING *
     `,
-      [venta_id, producto_id, cantidad, precio_unitario, costo_unitario, subtotal]
+      [
+        venta_id,
+        items.map((i) => i.producto_id),
+        items.map((i) => i.cantidad),
+        items.map((i) => i.precio_unitario),
+        items.map((i) => i.costo_unitario),
+        items.map((i) => i.cantidad * i.precio_unitario),
+      ]
     );
-    return rows[0];
+    return rows;
   },
 
   // Verificar stock disponible con bloqueo de fila (FOR UPDATE)

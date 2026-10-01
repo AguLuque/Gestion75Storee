@@ -4,6 +4,7 @@
 // El precio se hereda del producto base (precio_extra permite ajuste opcional)
 
 import pool from "../config/db.js";
+import { agruparCantidades } from "../utils/cantidades.js";
 
 const VarianteModel = {
   // Obtener todas las variantes de un producto
@@ -88,44 +89,32 @@ const VarianteModel = {
     return rows[0] || null;
   },
 
-  // Modificar stock por cantidad (positivo = suma, negativo = resta)
-  // Usado desde compra.service y venta.service dentro de transacciones
-  updateStock: async (id, cantidad, client = pool) => {
+  // Bloquea (FOR UPDATE) las variantes, verificando que sean de productos del
+  // usuario, en una sola consulta. Devuelve un Map id -> fila.
+  bloquearVarias: async (client, ids, usuario_id) => {
     const { rows } = await client.query(
-      `UPDATE variantes
-       SET stock_actual = stock_actual + $1
-       WHERE id = $2
-       RETURNING stock_actual`,
-      [cantidad, id]
-    );
-    return rows[0];
-  },
-
-  // Verificar stock de una variante con bloqueo (FOR UPDATE)
-  // Evita race conditions cuando dos ventas ocurren al mismo tiempo
-  // También verifica que la variante pertenezca a un producto del usuario autenticado
-  checkStock: async (client, variante_id, cantidad, usuario_id) => {
-    const { rows } = await client.query(
-      `SELECT v.stock_actual, p.precio_compra, p.precio_minorista, p.precio_mayorista, v.precio_extra
+      `SELECT v.id, v.stock_actual, p.precio_compra, p.precio_minorista, p.precio_mayorista, v.precio_extra
        FROM variantes v
        JOIN productos p ON p.id = v.producto_id
-       WHERE v.id = $1 AND p.usuario_id = $2
+       WHERE v.id = ANY($1) AND p.usuario_id = $2
+       ORDER BY v.id
        FOR UPDATE OF v`,
-      [variante_id, usuario_id]
+      [ids, usuario_id]
     );
+    return new Map(rows.map((r) => [String(r.id), r]));
+  },
 
-    if (!rows[0]) {
-      throw { status: 404, message: `Variante ${variante_id} no encontrada.` };
-    }
-
-    if (rows[0].stock_actual < cantidad) {
-      throw {
-        status: 400,
-        message: `Stock insuficiente para la variante ${variante_id}. Disponible: ${rows[0].stock_actual}`,
-      };
-    }
-
-    return rows[0];
+  // Suma (o resta) stock a varias variantes en una sola consulta. ajustes: [{ id, cantidad }]
+  updateStockVarias: async (client, ajustes) => {
+    const { ids, cantidades } = agruparCantidades(ajustes);
+    if (ids.length === 0) return;
+    await client.query(
+      `UPDATE variantes v
+       SET stock_actual = v.stock_actual + d.cantidad
+       FROM unnest($1::bigint[], $2::numeric[]) AS d(id, cantidad)
+       WHERE v.id = d.id`,
+      [ids, cantidades]
+    );
   },
 
   // Variantes sin stock de un producto

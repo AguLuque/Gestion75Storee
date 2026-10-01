@@ -84,15 +84,41 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
     let ganancia = 0;
     const itemsDetallados = [];
 
+    // Bloquea (FOR UPDATE) todos los productos y variantes de la venta en una
+    // consulta por tabla, en vez de una por ítem. Solo trae filas del usuario.
+    const itemsConVariante = items.filter((i) => i.variante_id);
+    const itemsSinVariante = items.filter((i) => !i.variante_id);
+    const variantes = itemsConVariante.length
+      ? await VarianteModel.bloquearVarias(client, itemsConVariante.map((i) => i.variante_id), usuario_id)
+      : new Map();
+    const productos = itemsSinVariante.length
+      ? await ProductoModel.bloquearVarios(client, itemsSinVariante.map((i) => i.producto_id), usuario_id)
+      : new Map();
+
+    // Cantidad pedida por producto/variante sumando todos los ítems: si el mismo
+    // producto viene en dos renglones, el stock tiene que alcanzar para los dos.
+    const pedido = new Map();
+    for (const item of items) {
+      const clave = item.variante_id ? `v${item.variante_id}` : `p${item.producto_id}`;
+      pedido.set(clave, (pedido.get(clave) ?? 0) + Number(item.cantidad));
+    }
+
     for (const item of items) {
       let precio_unitario;
       let costo_unitario;
 
       if (item.variante_id) {
         // — Producto CON variante —
-        // checkStock bloquea la fila con FOR UPDATE, verifica que sea del usuario autenticado
-        // y lanza error si no hay stock suficiente
-        const variante = await VarianteModel.checkStock(client, item.variante_id, item.cantidad, usuario_id);
+        const variante = variantes.get(String(item.variante_id));
+        if (!variante) {
+          throw { status: 404, message: `Variante ${item.variante_id} no encontrada.` };
+        }
+        if (variante.stock_actual < pedido.get(`v${item.variante_id}`)) {
+          throw {
+            status: 400,
+            message: `Stock insuficiente para la variante ${item.variante_id}. Disponible: ${variante.stock_actual}`,
+          };
+        }
 
         const precioBase =
           tipo === "mayorista" ? variante.precio_mayorista : variante.precio_minorista;
@@ -107,21 +133,13 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
         costo_unitario = variante.precio_compra;
       } else {
         // — Producto SIN variante —
-        const { rows: productoRows } = await client.query(
-          `SELECT stock_actual, precio_compra, precio_minorista, precio_mayorista
-           FROM productos
-           WHERE id = $1 AND activo = true AND usuario_id = $2
-           FOR UPDATE`,
-          [item.producto_id, usuario_id]
-        );
+        const producto = productos.get(String(item.producto_id));
 
-        if (!productoRows[0]) {
+        if (!producto) {
           throw { status: 404, message: `Producto ${item.producto_id} no encontrado.` };
         }
 
-        const producto = productoRows[0];
-
-        if (producto.stock_actual < item.cantidad) {
+        if (producto.stock_actual < pedido.get(`p${item.producto_id}`)) {
           throw {
             status: 400,
             message: `Stock insuficiente para producto ${item.producto_id}. Disponible: ${producto.stock_actual}`,
@@ -228,23 +246,17 @@ const crearVenta = async ({ tipo, observaciones, metodo_pago, canal, comision, c
       }
     }
 
-    // Insertar ítems y descontar stock
-    const itemsCreados = [];
-    for (const item of itemsDetallados) {
-      const itemCreado = await VentaModel.insertItem(client, {
-        venta_id: venta.id,
-        ...item,
-      });
-      itemsCreados.push(itemCreado);
+    // Insertar ítems y descontar stock (una consulta para todos los ítems y una por tabla de stock)
+    const itemsCreados = await VentaModel.insertItems(client, venta.id, itemsDetallados);
 
-      if (item.variante_id) {
-        // Descontar stock de la variante
-        await VarianteModel.updateStock(item.variante_id, -item.cantidad, client);
-      } else {
-        // Descontar stock del producto base
-        await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
-      }
-    }
+    await VarianteModel.updateStockVarias(
+      client,
+      itemsDetallados.filter((i) => i.variante_id).map((i) => ({ id: i.variante_id, cantidad: -i.cantidad }))
+    );
+    await ProductoModel.updateStockVarios(
+      client,
+      itemsDetallados.filter((i) => !i.variante_id).map((i) => ({ id: i.producto_id, cantidad: -i.cantidad }))
+    );
 
     await client.query("COMMIT");
 
@@ -279,33 +291,15 @@ const eliminarVenta = async (id, usuario_id) => {
       throw { status: 404, message: "Venta no encontrada o ya fue eliminada." };
     }
 
-    const { rows: items } = await client.query(
-      `SELECT producto_id, cantidad FROM venta_items WHERE venta_id = $1`,
-      [id]
-    );
+    await ProductoModel.updateStockDesdeItems(client, "venta_items", id, 1);
 
-    for (const item of items) {
-      await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
-    }
-
-    const { rows: movimientosOriginales } = await client.query(
-      `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'venta' AND origen_id = $1 AND usuario_id = $2`,
-      [id, usuario_id]
-    );
-
-    for (const mov of movimientosOriginales) {
-      await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: fechaArgentina(),
-        tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
-        categoria: mov.categoria,
-        monto: mov.monto,
-        cuenta_dinero_id: mov.cuenta_dinero_id,
-        origen_tipo: "venta",
-        origen_id: id,
-        descripcion: `Reversión por anulación de venta #${id}`,
-        usuario_id,
-      });
-    }
+    await MovimientoFinancieroModel.revertirOrigenEnTransaccion(client, {
+      origen_tipo: "venta",
+      origen_id: id,
+      usuario_id,
+      fecha: fechaArgentina(),
+      descripcion: `Reversión por anulación de venta #${id}`,
+    });
 
     await client.query(
       `UPDATE cuentas_por_cobrar SET activo = false WHERE venta_id = $1 AND activo = true AND usuario_id = $2`,

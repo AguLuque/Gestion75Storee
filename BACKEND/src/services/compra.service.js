@@ -40,29 +40,39 @@ const validarItems = (items) => {
   }
 };
 
-// Verifica que el producto/variante del ítem pertenezca al usuario autenticado
-// y bloquea la fila (FOR UPDATE) para la actualización de stock que sigue.
-const verificarPropiedad = async (client, item, usuario_id) => {
-  if (item.variante_id) {
-    const { rows } = await client.query(
-      `SELECT v.id FROM variantes v
-       JOIN productos p ON p.id = v.producto_id
-       WHERE v.id = $1 AND p.usuario_id = $2
-       FOR UPDATE OF v`,
-      [item.variante_id, usuario_id]
-    );
-    if (!rows[0]) {
+// Verifica que los productos/variantes de los ítems pertenezcan al usuario
+// autenticado y bloquea las filas (FOR UPDATE) para la actualización de stock
+// que sigue. Una consulta por tabla, no una por ítem.
+const verificarPropiedad = async (client, items, usuario_id) => {
+  const conVariante = items.filter((i) => i.variante_id);
+  const sinVariante = items.filter((i) => !i.variante_id);
+  const variantes = conVariante.length
+    ? await VarianteModel.bloquearVarias(client, conVariante.map((i) => i.variante_id), usuario_id)
+    : new Map();
+  const productos = sinVariante.length
+    ? await ProductoModel.bloquearVarios(client, sinVariante.map((i) => i.producto_id), usuario_id)
+    : new Map();
+
+  for (const item of items) {
+    if (item.variante_id && !variantes.has(String(item.variante_id))) {
       throw { status: 404, message: `Variante ${item.variante_id} no encontrada.` };
     }
-  } else {
-    const { rows } = await client.query(
-      `SELECT id FROM productos WHERE id = $1 AND activo = true AND usuario_id = $2 FOR UPDATE`,
-      [item.producto_id, usuario_id]
-    );
-    if (!rows[0]) {
+    if (!item.variante_id && !productos.has(String(item.producto_id))) {
       throw { status: 404, message: `Producto ${item.producto_id} no encontrado.` };
     }
   }
+};
+
+// Suma (signo 1) o resta (signo -1) al stock las cantidades de los ítems
+const sumarStock = async (client, items, signo) => {
+  await VarianteModel.updateStockVarias(
+    client,
+    items.filter((i) => i.variante_id).map((i) => ({ id: i.variante_id, cantidad: signo * i.cantidad }))
+  );
+  await ProductoModel.updateStockVarios(
+    client,
+    items.filter((i) => !i.variante_id).map((i) => ({ id: i.producto_id, cantidad: signo * i.cantidad }))
+  );
 };
 
 const redondear = (n) => Math.round(n * 100) / 100;
@@ -87,30 +97,13 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
   try {
     await client.query("BEGIN");
 
-    for (const item of items) {
-      await verificarPropiedad(client, item, usuario_id);
-    }
+    await verificarPropiedad(client, items, usuario_id);
 
     const compra = await CompraModel.insertCabecera(client, {
       proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id,
     });
-    const itemsCreados = [];
-    for (const item of items) {
-      const itemCreado = await CompraModel.insertItem(client, {
-        compra_id: compra.id,
-        producto_id: item.producto_id,
-        variante_id: item.variante_id ?? null,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-      });
-      itemsCreados.push(itemCreado);
-
-      if (item.variante_id) {
-        await VarianteModel.updateStock(item.variante_id, item.cantidad, client);
-      } else {
-        await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
-      }
-    }
+    const itemsCreados = await CompraModel.insertItems(client, compra.id, items);
+    await sumarStock(client, items, 1);
 
     if (compra.estado_pago === "pendiente") {
       await CuentaPorPagarModel.createEnTransaccion(client, {
@@ -213,59 +206,25 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
       );
     }
 
-    for (const item of items) {
-      await verificarPropiedad(client, item, usuario_id);
-    }
+    await verificarPropiedad(client, items, usuario_id);
 
-    const compraAnterior = await CompraModel.getById(id, usuario_id);
-
-    // Nota: compra_items no guarda variante_id (limitación actual del esquema), así que
-    // item.variante_id acá siempre es undefined hoy. Se deja la rama lista para cuando
-    // se persista esa columna — por ahora se comporta igual que antes para todo dato real.
-    for (const item of compraAnterior.items) {
-      if (item.variante_id) {
-        await VarianteModel.updateStock(item.variante_id, -item.cantidad, client);
-      } else {
-        await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
-      }
-    }
+    // Saca el stock que había sumado la versión anterior de la compra.
+    // compra_items no guarda variante_id (limitación actual del esquema), así
+    // que siempre se ajusta el producto base, igual que antes.
+    await ProductoModel.updateStockDesdeItems(client, "compra_items", id, -1);
 
     await CompraModel.deleteItems(client, id);
     await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones, tipo, costo_envio }, usuario_id);
-    for (const item of items) {
-      await CompraModel.insertItem(client, {
-        compra_id: id,
-        producto_id: item.producto_id,
-        variante_id: item.variante_id ?? null,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-      });
+    await CompraModel.insertItems(client, id, items);
+    await sumarStock(client, items, 1);
 
-      if (item.variante_id) {
-        await VarianteModel.updateStock(item.variante_id, item.cantidad, client);
-      } else {
-        await ProductoModel.updateStock(item.producto_id, item.cantidad, client);
-      }
-    }
-
-    const { rows: movimientosOriginales } = await client.query(
-      `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1 AND usuario_id = $2`,
-      [id, usuario_id]
-    );
-
-    for (const mov of movimientosOriginales) {
-      await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: fechaArgentina(),
-        tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
-        categoria: mov.categoria,
-        monto: mov.monto,
-        cuenta_dinero_id: mov.cuenta_dinero_id,
-        origen_tipo: "compra",
-        origen_id: id,
-        descripcion: `Reversión por edición de compra #${id}`,
-        usuario_id,
-      });
-    }
+    const movimientosOriginales = await MovimientoFinancieroModel.revertirOrigenEnTransaccion(client, {
+      origen_tipo: "compra",
+      origen_id: id,
+      usuario_id,
+      fecha: fechaArgentina(),
+      descripcion: `Reversión por edición de compra #${id}`,
+    });
 
     // Cuenta con la que se vuelve a registrar el pago. Si no se indica una
     // nueva, se mantiene la del pago vigente: sin esto, editar una compra
@@ -341,33 +300,15 @@ const eliminarCompra = async (id, usuario_id) => {
       throw { status: 404, message: "Compra no encontrada o ya fue eliminada." };
     }
 
-    const { rows: items } = await client.query(
-      `SELECT producto_id, cantidad FROM compra_items WHERE compra_id = $1`,
-      [id]
-    );
+    await ProductoModel.updateStockDesdeItems(client, "compra_items", id, -1);
 
-    for (const item of items) {
-      await ProductoModel.updateStock(item.producto_id, -item.cantidad, client);
-    }
-
-    const { rows: movimientosOriginales } = await client.query(
-      `SELECT * FROM movimientos_financieros WHERE origen_tipo = 'compra' AND origen_id = $1 AND usuario_id = $2`,
-      [id, usuario_id]
-    );
-
-    for (const mov of movimientosOriginales) {
-      await MovimientoFinancieroModel.createEnTransaccion(client, {
-        fecha: fechaArgentina(),
-        tipo: mov.tipo === "ingreso" ? "egreso" : "ingreso",
-        categoria: mov.categoria,
-        monto: mov.monto,
-        cuenta_dinero_id: mov.cuenta_dinero_id,
-        origen_tipo: "compra",
-        origen_id: id,
-        descripcion: `Reversión por anulación de compra #${id}`,
-        usuario_id,
-      });
-    }
+    await MovimientoFinancieroModel.revertirOrigenEnTransaccion(client, {
+      origen_tipo: "compra",
+      origen_id: id,
+      usuario_id,
+      fecha: fechaArgentina(),
+      descripcion: `Reversión por anulación de compra #${id}`,
+    });
 
     await client.query(
       `UPDATE cuentas_por_pagar SET activo = false WHERE compra_id = $1 AND activo = true AND usuario_id = $2`,

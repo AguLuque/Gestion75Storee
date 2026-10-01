@@ -68,14 +68,24 @@ const CompraModel = {
     return rows[0];
   },
 
-  insertItem: async (client, { compra_id, producto_id, cantidad, precio_unitario }) => {
-    const subtotal = cantidad * precio_unitario;
+  // Inserta todos los ítems de una compra en una sola consulta
+  insertItems: async (client, compra_id, items) => {
     const { rows } = await client.query(
       `INSERT INTO compra_items (compra_id, producto_id, cantidad, precio_unitario, subtotal)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [compra_id, producto_id, cantidad, precio_unitario, subtotal]
+       SELECT $1, i.producto_id, i.cantidad, i.precio_unitario, i.subtotal
+       FROM unnest($2::bigint[], $3::numeric[], $4::numeric[], $5::numeric[])
+         WITH ORDINALITY AS i(producto_id, cantidad, precio_unitario, subtotal, orden)
+       ORDER BY i.orden
+       RETURNING *`,
+      [
+        compra_id,
+        items.map((i) => i.producto_id),
+        items.map((i) => i.cantidad),
+        items.map((i) => i.precio_unitario),
+        items.map((i) => i.cantidad * i.precio_unitario),
+      ]
     );
-    return rows[0];
+    return rows;
   },
 
   deleteItems: async (client, compra_id) => {

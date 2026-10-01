@@ -1,5 +1,6 @@
 // src/models/producto.model.js
 import pool from "../config/db.js";
+import { agruparCantidades } from "../utils/cantidades.js";
 
 const ProductoModel = {
   // Obtener todos los productos activos con el nombre de su categoría
@@ -74,15 +75,50 @@ const ProductoModel = {
     );
     return rows[0] || null;
   },
-  updateStock: async (id, cantidad, client = pool) => {
+  // Bloquea (FOR UPDATE) y trae en una sola consulta los productos activos del
+  // usuario. El ORDER BY id hace que dos transacciones bloqueen siempre en el
+  // mismo orden y no se traben entre sí. Devuelve un Map id -> fila.
+  bloquearVarios: async (client, ids, usuario_id) => {
     const { rows } = await client.query(
-      `UPDATE productos
-     SET stock_actual = stock_actual + $1, updated_at = now()
-     WHERE id = $2
-     RETURNING stock_actual`,
-      [cantidad, id]
+      `SELECT id, stock_actual, precio_compra, precio_minorista, precio_mayorista
+     FROM productos
+     WHERE id = ANY($1) AND activo = true AND usuario_id = $2
+     ORDER BY id
+     FOR UPDATE`,
+      [ids, usuario_id]
     );
-    return rows[0];
+    return new Map(rows.map((r) => [String(r.id), r]));
+  },
+
+  // Suma (o resta, con cantidad negativa) stock a varios productos en una sola consulta.
+  // ajustes: [{ id, cantidad }]
+  updateStockVarios: async (client, ajustes) => {
+    const { ids, cantidades } = agruparCantidades(ajustes);
+    if (ids.length === 0) return;
+    await client.query(
+      `UPDATE productos p
+     SET stock_actual = p.stock_actual + d.cantidad, updated_at = now()
+     FROM unnest($1::bigint[], $2::numeric[]) AS d(id, cantidad)
+     WHERE p.id = d.id`,
+      [ids, cantidades]
+    );
+  },
+
+  // Repone (signo 1) o descuenta (signo -1) el stock de todos los ítems ya
+  // guardados de una venta o compra, en una sola consulta.
+  updateStockDesdeItems: async (client, tablaItems, padreId, signo) => {
+    const columnaPadre = { venta_items: "venta_id", compra_items: "compra_id" }[tablaItems];
+    if (!columnaPadre || ![1, -1].includes(signo)) {
+      throw new Error("updateStockDesdeItems: parámetros no permitidos");
+    }
+    await client.query(
+      `UPDATE productos p
+     SET stock_actual = p.stock_actual + ${signo} * i.cantidad, updated_at = now()
+     FROM (SELECT producto_id, SUM(cantidad) AS cantidad
+           FROM ${tablaItems} WHERE ${columnaPadre} = $1 GROUP BY producto_id) AS i
+     WHERE p.id = i.producto_id`,
+      [padreId]
+    );
   },
 
   // Ajuste manual de stock (el cliente carga el valor absoluto que tiene, no un delta)
