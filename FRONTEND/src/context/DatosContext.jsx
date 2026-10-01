@@ -132,7 +132,8 @@ export function DatosProvider({ children }) {
       ventasFiltradas: datos.ventas,
       comprasFiltradas: datos.compras,
       gastosFiltrados: datos.gastos,
-      // Control del período
+      // Control del período (rango = días desde/hasta que abarca)
+      rango,
       periodo,
       setPeriodo,
       mesSeleccionado,

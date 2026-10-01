@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3 } from 'lucide-react';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
-import { formatearPrecio, formatearFecha } from '../utils.js';
+import { formatearPrecio, formatearFecha, diaISO } from '../utils.js';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function Dashboard() {
     comprasFiltradas: compras,
     gastosFiltrados: gastos,
     cuentasPorCobrar,
+    rango,
     cargando
   } = useDatosGlobal();
 
@@ -20,18 +21,28 @@ export default function Dashboard() {
   const listaCompras = Array.isArray(compras) ? compras : [];
   const listaGastos = Array.isArray(gastos) ? gastos : [];
   const listaPorCobrar = Array.isArray(cuentasPorCobrar) ? cuentasPorCobrar : [];
+  // Mismo criterio que el Estado de Resultados de Reportes: el fiado cargado a
+  // mano (deuda sin venta) cuenta como venta el día que se cargó, y el flete
+  // de las compras del período se resta de la ganancia.
   const stats = useMemo(() => {
-    const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0);
+    const enRango = (dia) =>
+      (!rango?.desde || dia >= rango.desde) && (!rango?.hasta || dia <= rango.hasta);
+    const fiados = listaPorCobrar
+      .filter(c => !c.venta_id && enRango(diaISO(c.fecha_emision)))
+      .reduce((s, c) => s + Number(c.monto_total || 0), 0);
+    const fletes = listaCompras.reduce((s, c) => s + Number(c.costo_envio || 0), 0);
+
+    const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0) + fiados;
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0) + Number(c.costo_envio || 0), 0);
     const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
-    const gananciaBruta = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0);
+    const gananciaBruta = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0) + fiados - fletes;
     const gananciaNeta = gananciaBruta - totalGastos;
     // Lo que me deben, a hoy: mismo cálculo que "Por cobrar" en Reportes/Balance
     // (saldo pendiente de las cuentas por cobrar activas, que ya incluyen el
     // fiado cargado a mano que antes estaba en Deudores). No depende del período.
     const totalPorCobrar = listaPorCobrar.reduce((s, c) => s + Number(c.saldo_pendiente || 0), 0);
     return { totalVentas, totalCompras, totalGastos, gananciaBruta, gananciaNeta, totalPorCobrar };
-  }, [listaVentas, listaCompras, listaGastos, listaPorCobrar]);
+  }, [listaVentas, listaCompras, listaGastos, listaPorCobrar, rango]);
 
   // Ranking de productos más vendidos (por unidades) en el período seleccionado
   const masVendidos = useMemo(() => {

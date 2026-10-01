@@ -33,17 +33,42 @@ const ReporteModel = {
       [usuario_id, desde, hasta]
     );
 
+    // Costo de envío de las compras del período: es parte de lo que cuesta
+    // traer la mercadería, así que se resta antes de la utilidad bruta.
+    const { rows: fletesRows } = await pool.query(
+      `SELECT COALESCE(SUM(costo_envio), 0) AS fletes_compras
+       FROM compras
+       WHERE activo = true AND usuario_id = $1 AND (fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
+      [usuario_id, desde, hasta]
+    );
+
+    // Deudas manuales (fiado cargado a mano, sin venta asociada): son ventas a
+    // crédito, cuentan el día que se cargaron. No tienen productos asociados,
+    // así que no hay costo de mercadería para restarles.
+    const { rows: fiadasRows } = await pool.query(
+      `SELECT COALESCE(SUM(monto_total), 0) AS ventas_fiadas
+       FROM cuentas_por_cobrar
+       WHERE venta_id IS NULL AND activo = true AND usuario_id = $1 AND fecha_emision BETWEEN $2 AND $3`,
+      [usuario_id, desde, hasta]
+    );
+
     const ingresos_por_ventas = Number(ventasRows[0].ingresos_por_ventas);
+    const ventas_fiadas = Number(fiadasRows[0].ventas_fiadas);
     const comisiones = Number(ventasRows[0].comisiones);
     const costo_mercaderia_vendida = Number(costoRows[0].costo_mercaderia_vendida);
+    const fletes_compras = Number(fletesRows[0].fletes_compras);
     const gastos_operativos = Number(gastosRows[0].gastos_operativos);
 
-    const utilidad_bruta = ingresos_por_ventas - costo_mercaderia_vendida - comisiones;
+    const ingresos_totales = ingresos_por_ventas + ventas_fiadas;
+    const utilidad_bruta = ingresos_totales - costo_mercaderia_vendida - fletes_compras - comisiones;
     const utilidad_neta = utilidad_bruta - gastos_operativos;
 
     return {
       ingresos_por_ventas,
+      ventas_fiadas,
+      ingresos_totales,
       costo_mercaderia_vendida,
+      fletes_compras,
       comisiones,
       utilidad_bruta,
       gastos_operativos,
@@ -157,7 +182,7 @@ const ReporteModel = {
 
     return {
       utilidad_neta_periodo: estadoResultados.utilidad_neta,
-      ingresos_por_ventas_periodo: estadoResultados.ingresos_por_ventas,
+      ingresos_por_ventas_periodo: estadoResultados.ingresos_totales,
       saldo_total_cuentas: balance.disponible,
       total_por_cobrar: balance.por_cobrar,
       total_por_pagar: balance.por_pagar,

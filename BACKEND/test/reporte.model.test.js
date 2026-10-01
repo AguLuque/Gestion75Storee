@@ -68,13 +68,42 @@ test("getEstadoResultados calcula ingresos, costo de mercaderia, comisiones y ga
   assert.equal(Number(resultado.comisiones) >= 10, true);
   assert.equal(Number(resultado.gastos_operativos) >= 50, true);
   assert.equal(
+    Number(resultado.ingresos_totales.toFixed(2)),
+    Number((resultado.ingresos_por_ventas + resultado.ventas_fiadas).toFixed(2))
+  );
+  assert.equal(
     Number(resultado.utilidad_bruta.toFixed(2)),
-    Number((Number(resultado.ingresos_por_ventas) - Number(resultado.costo_mercaderia_vendida) - Number(resultado.comisiones)).toFixed(2))
+    Number((resultado.ingresos_totales - resultado.costo_mercaderia_vendida - resultado.fletes_compras - resultado.comisiones).toFixed(2))
   );
   assert.equal(
     Number(resultado.utilidad_neta.toFixed(2)),
     Number((Number(resultado.utilidad_bruta) - Number(resultado.gastos_operativos)).toFixed(2))
   );
+});
+
+test("getEstadoResultados suma el fiado cargado a mano y resta el flete de las compras del periodo", async () => {
+  const antes = await ReporteModel.getEstadoResultados(HOY, HOY, REAL_UID);
+
+  const compra = await pool.query(
+    `INSERT INTO compras (total, costo_envio, observaciones, usuario_id) VALUES (0, 70, $1, $2) RETURNING id`,
+    [`${MARCA} compra`, REAL_UID]
+  );
+  const fiado = await pool.query(
+    `INSERT INTO cuentas_por_cobrar (venta_id, cliente_nombre, monto_total, saldo_pendiente, fecha_emision, usuario_id)
+     VALUES (NULL, $1, 300, 300, $2, $3) RETURNING id`,
+    [`${MARCA} fiado`, HOY, REAL_UID]
+  );
+
+  try {
+    const despues = await ReporteModel.getEstadoResultados(HOY, HOY, REAL_UID);
+    assert.equal(Number((despues.fletes_compras - antes.fletes_compras).toFixed(2)), 70);
+    assert.equal(Number((despues.ventas_fiadas - antes.ventas_fiadas).toFixed(2)), 300);
+    assert.equal(Number((despues.ingresos_por_ventas - antes.ingresos_por_ventas).toFixed(2)), 0, "el fiado no es una venta registrada");
+    assert.equal(Number((despues.utilidad_neta - antes.utilidad_neta).toFixed(2)), 230, "300 de fiado - 70 de flete");
+  } finally {
+    await pool.query(`DELETE FROM cuentas_por_cobrar WHERE id = $1`, [fiado.rows[0].id]);
+    await pool.query(`DELETE FROM compras WHERE id = $1`, [compra.rows[0].id]);
+  }
 });
 
 test("getEstadoResultados no incluye ventas fuera del periodo ni de otro usuario", async () => {
