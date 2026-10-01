@@ -3,13 +3,14 @@
 // Los gastos son egresos del negocio no relacionados a compras de stock
 
 import pool from "../config/db.js";
+import { condicionRangoFechas } from "../utils/fechas.js";
 
 const GastoModel = {
-  // Obtener todos los gastos ordenados por fecha
-  getAll: async (usuario_id) => {
+  // Gastos ordenados por fecha; desde/hasta (días de Argentina, opcionales) acotan el período
+  getAll: async (usuario_id, { desde = null, hasta = null } = {}) => {
     const { rows } = await pool.query(
-      `SELECT * FROM gastos WHERE usuario_id = $1 ORDER BY fecha DESC`,
-      [usuario_id]
+      `SELECT * FROM gastos WHERE usuario_id = $1 AND ${condicionRangoFechas("fecha", 2, 3)} ORDER BY fecha DESC`,
+      [usuario_id, desde, hasta]
     );
     return rows;
   },

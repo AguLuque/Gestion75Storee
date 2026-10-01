@@ -2,7 +2,7 @@
 
 import GastoModel from "../models/gasto.model.js";
 import MovimientoFinancieroModel from "../models/movimientoFinanciero.model.js";
-import { fechaArgentina } from "../utils/fechas.js";
+import { fechaArgentina, leerRangoFechas } from "../utils/fechas.js";
 import CuentaDineroModel from "../models/cuentaDinero.model.js";
 import { normalizarCategoriaGasto, esMetodoPagoCompatible, errorMetodoPagoIncompatible } from "../constants/finanzas.js";
 import GastoService from "../services/gasto.service.js";
@@ -10,10 +10,10 @@ import GastoService from "../services/gasto.service.js";
 const METODOS_PAGO_VALIDOS = ["efectivo", "transferencia", "tarjeta", "otro"];
 
 const GastoController = {
-  // GET /gastos
+  // GET /gastos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (opcionales)
   getAll: async (req, res, next) => {
     try {
-      const gastos = await GastoModel.getAll(req.usuario_id);
+      const gastos = await GastoModel.getAll(req.usuario_id, leerRangoFechas(req.query));
       res.json({ success: true, data: gastos });
     } catch (err) { next(err); }
   },

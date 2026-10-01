@@ -3,12 +3,13 @@
 
 import CompraModel from "../models/compra.model.js";
 import CompraService from "../services/compra.service.js";
+import { leerRangoFechas } from "../utils/fechas.js";
 
 const CompraController = {
-  // GET /compras
+  // GET /compras?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (opcionales)
   getAll: async (req, res, next) => {
     try {
-      const compras = await CompraModel.getAll(req.usuario_id);
+      const compras = await CompraModel.getAll(req.usuario_id, leerRangoFechas(req.query));
       res.json({ success: true, data: compras });
     } catch (err) { next(err); }
   },

@@ -4,10 +4,11 @@
 // para garantizar atomicidad: cabecera + items + stock en un solo bloque
 
 import pool from "../config/db.js";
+import { condicionRangoFechas } from "../utils/fechas.js";
 
 const CompraModel = {
-  // Listar todas las compras con sus ítems agrupados
-  getAll: async (usuario_id) => {
+  // Compras con sus ítems agrupados; desde/hasta (días de Argentina, opcionales) acotan el período
+  getAll: async (usuario_id, { desde = null, hasta = null } = {}) => {
     const { rows } = await pool.query(`
     SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio, c.estado_pago,
       p.nombre AS proveedor,
@@ -22,10 +23,10 @@ const CompraModel = {
     LEFT JOIN proveedores p ON p.id = c.proveedor_id
     JOIN compra_items ci ON ci.compra_id = c.id
     JOIN productos prod ON prod.id = ci.producto_id
-    WHERE c.usuario_id = $1 AND c.activo = true
+    WHERE c.usuario_id = $1 AND c.activo = true AND ${condicionRangoFechas("c.fecha", 2, 3)}
     GROUP BY c.id, p.nombre
     ORDER BY c.fecha DESC
-  `, [usuario_id]);
+  `, [usuario_id, desde, hasta]);
     return rows;
   },
 

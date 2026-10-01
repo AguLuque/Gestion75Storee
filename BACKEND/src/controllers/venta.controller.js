@@ -1,11 +1,12 @@
 import VentaModel from "../models/venta.model.js";
 import VentaService from "../services/venta.service.js";
+import { leerRangoFechas } from "../utils/fechas.js";
 
 const VentaController = {
-  // GET /ventas
+  // GET /ventas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (opcionales)
   getAll: async (req, res, next) => {
     try {
-      const ventas = await VentaModel.getAll(req.usuario_id);
+      const ventas = await VentaModel.getAll(req.usuario_id, leerRangoFechas(req.query));
       res.json({ success: true, data: ventas });
     } catch (err) { next(err); }
   },

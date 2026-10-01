@@ -1,32 +1,44 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ventasApi, comprasApi, productosApi, gastosApi, categoriasApi, proveedoresApi, cuentasDineroApi, cuentasPorCobrarApi, cuentasPorPagarApi } from '../services/api.js';
+import { rangoDelPeriodo } from '../utils.js';
 
 const DatosContext = createContext(null);
 
-function aplicarFiltro(lista, periodo, campo = 'fecha', mesSeleccionado, añoSeleccionado) {
-  if (periodo === 'todo') return lista;
-  const ahora = new Date();
-  return lista.filter(item => {
-    const fecha = new Date(item[campo]);
-    switch (periodo) {
-      case 'dia': {
-        const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-        return fecha >= hoy;
-      }
-      case 'semana': {
-        const inicio = new Date(ahora);
-        inicio.setDate(ahora.getDate() - 7);
-        return fecha >= inicio;
-      }
-      case 'mes':
-        return fecha.getMonth() === mesSeleccionado &&
-          fecha.getFullYear() === añoSeleccionado;
-      case 'año':
-        return fecha.getFullYear() === ahora.getFullYear();
-      default:
-        return true;
-    }
-  });
+// Ventas, compras y gastos se piden al backend solo del período elegido en el
+// filtro global (no todo el historial), así la carga no crece con los meses.
+const SECCIONES_POR_PERIODO = ['ventas', 'compras', 'gastos'];
+
+const valorOVacio = (resultado) => (resultado.status === 'fulfilled' ? resultado.value : []);
+
+async function pedirDatosDelPeriodo(rango) {
+  const [ventas, compras, gastos] = await Promise.allSettled([
+    ventasApi.listar(rango),
+    comprasApi.listar(rango),
+    gastosApi.listar(rango),
+  ]);
+  return { ventas: valorOVacio(ventas), compras: valorOVacio(compras), gastos: valorOVacio(gastos) };
+}
+
+async function pedirDatosBase() {
+  const [productos, categorias, proveedores, bajoStock, cuentasDinero, cuentasPorCobrar, cuentasPorPagar] =
+    await Promise.allSettled([
+      productosApi.listar(),
+      categoriasApi.listar(),
+      proveedoresApi.listar(),
+      productosApi.bajoStock(),
+      cuentasDineroApi.listar(),
+      cuentasPorCobrarApi.listar(),
+      cuentasPorPagarApi.listar(),
+    ]);
+  return {
+    productos: valorOVacio(productos),
+    categorias: valorOVacio(categorias),
+    proveedores: valorOVacio(proveedores),
+    bajoStock: valorOVacio(bajoStock),
+    cuentasDinero: valorOVacio(cuentasDinero),
+    cuentasPorCobrar: valorOVacio(cuentasPorCobrar),
+    cuentasPorPagar: valorOVacio(cuentasPorPagar),
+  };
 }
 
 export function DatosProvider({ children }) {
@@ -44,39 +56,49 @@ export function DatosProvider({ children }) {
     (añoSeleccionado === new Date().getFullYear() && mesSeleccionado > new Date().getMonth());
 
 
-  const cargarTodo = useCallback(async () => {
-    setCargando(true);
-    const resultados = await Promise.allSettled([
-      ventasApi.listar(),
-      comprasApi.listar(),
-      productosApi.listar(),
-      gastosApi.listar(),
-      categoriasApi.listar(),
-      proveedoresApi.listar(),
-      productosApi.bajoStock(),
-      cuentasDineroApi.listar(),
-      cuentasPorCobrarApi.listar(),
-      cuentasPorPagarApi.listar(),
-    ]);
+  // El rango vigente vive también en un ref: así una respuesta que llega
+  // después de cambiar el período se descarta en vez de pisar los datos nuevos.
+  const rango = useMemo(
+    () => rangoDelPeriodo(periodo, mesSeleccionado, añoSeleccionado),
+    [periodo, mesSeleccionado, añoSeleccionado]
+  );
+  const rangoRef = useRef(rango);
 
-    const [ventas, compras, productos, gastos, categorias, proveedores, bajoStock, cuentasDinero, cuentasPorCobrar, cuentasPorPagar] = resultados;
-
-    setDatos({
-      ventas: ventas.status === 'fulfilled' ? ventas.value : [],
-      compras: compras.status === 'fulfilled' ? compras.value : [],
-      productos: productos.status === 'fulfilled' ? productos.value : [],
-      gastos: gastos.status === 'fulfilled' ? gastos.value : [],
-      categorias: categorias.status === 'fulfilled' ? categorias.value : [],
-      proveedores: proveedores.status === 'fulfilled' ? proveedores.value : [],
-      bajoStock: bajoStock.status === 'fulfilled' ? bajoStock.value : [],
-      cuentasDinero: cuentasDinero.status === 'fulfilled' ? cuentasDinero.value : [],
-      cuentasPorCobrar: cuentasPorCobrar.status === 'fulfilled' ? cuentasPorCobrar.value : [],
-      cuentasPorPagar: cuentasPorPagar.status === 'fulfilled' ? cuentasPorPagar.value : [],
-    });
-    setCargando(false);
+  // Pide todo; los datos del período solo se aplican si el período no cambió
+  // mientras tanto (si cambió, ya los está pidiendo el efecto de abajo).
+  const cargarTodo = useCallback(() => {
+    const rangoPedido = rangoRef.current;
+    return Promise.all([pedirDatosBase(), pedirDatosDelPeriodo(rangoPedido)])
+      .then(([base, delPeriodo]) => {
+        setDatos(prev => ({
+          ...prev,
+          ...base,
+          ...(rangoRef.current === rangoPedido ? delPeriodo : {}),
+        }));
+        setCargando(false);
+      });
   }, []);
 
   useEffect(() => { cargarTodo(); }, [cargarTodo]);
+
+  const recargarTodo = useCallback(() => {
+    setCargando(true);
+    return cargarTodo();
+  }, [cargarTodo]);
+
+  // Al cambiar el período solo se vuelven a pedir ventas, compras y gastos.
+  // La primera carga ya la hace cargarTodo.
+  const esPrimerRango = useRef(true);
+  useEffect(() => {
+    rangoRef.current = rango;
+    if (esPrimerRango.current) {
+      esPrimerRango.current = false;
+      return;
+    }
+    pedirDatosDelPeriodo(rango).then(delPeriodo => {
+      if (rangoRef.current === rango) setDatos(prev => ({ ...prev, ...delPeriodo }));
+    });
+  }, [rango]);
 
   const recargar = useCallback(async (seccion) => {
     const apis = {
@@ -91,29 +113,25 @@ export function DatosProvider({ children }) {
       cuentasPorCobrar: cuentasPorCobrarApi.listar,
       cuentasPorPagar: cuentasPorPagarApi.listar,
     };
+    const porPeriodo = SECCIONES_POR_PERIODO.includes(seccion);
+    const rangoPedido = rangoRef.current;
     try {
-      const resultado = await apis[seccion]();
+      const resultado = await (porPeriodo ? apis[seccion](rangoPedido) : apis[seccion]());
+      if (porPeriodo && rangoRef.current !== rangoPedido) return;
       setDatos(prev => ({ ...prev, [seccion]: Array.isArray(resultado) ? resultado : [] }));
     } catch {
       // silencioso, mantiene datos anteriores
     }
   }, []);
 
-  // Datos filtrados por período — se recalculan solos al cambiar el período
-  const datosFiltrados = useMemo(() => ({
-    ventas: aplicarFiltro(datos.ventas, periodo, 'fecha', mesSeleccionado, añoSeleccionado),
-    compras: aplicarFiltro(datos.compras, periodo, 'fecha', mesSeleccionado, añoSeleccionado),
-    gastos: aplicarFiltro(datos.gastos, periodo, 'fecha', mesSeleccionado, añoSeleccionado),
-  }), [datos.ventas, datos.compras, datos.gastos, periodo, mesSeleccionado, añoSeleccionado]);
-
   return (
     <DatosContext.Provider value={{
       // Datos crudos (para páginas que no necesitan filtro)
       ...datos,
-      // Datos filtrados (para dashboard y totales)
-      ventasFiltradas: datosFiltrados.ventas,
-      comprasFiltradas: datosFiltrados.compras,
-      gastosFiltrados: datosFiltrados.gastos,
+      // Ya vienen del backend acotados al período elegido
+      ventasFiltradas: datos.ventas,
+      comprasFiltradas: datos.compras,
+      gastosFiltrados: datos.gastos,
       // Control del período
       periodo,
       setPeriodo,
@@ -124,7 +142,7 @@ export function DatosProvider({ children }) {
       setAñoSeleccionado,
       cargando,
       recargar,
-      recargarTodo: cargarTodo,
+      recargarTodo,
     }}>
       {children}
     </DatosContext.Provider>

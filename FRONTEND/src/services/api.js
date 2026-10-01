@@ -26,6 +26,15 @@ async function peticion(ruta, opciones = {}) {
   return json.data !== undefined ? json.data : json;
 }
 
+// "?desde=...&hasta=..." con los extremos que tenga el rango ({ desde, hasta })
+function consultaRango(rango = {}) {
+  const params = new URLSearchParams();
+  if (rango.desde) params.set('desde', rango.desde);
+  if (rango.hasta) params.set('hasta', rango.hasta);
+  const texto = params.toString();
+  return texto ? `?${texto}` : '';
+}
+
 // Productos
 export const productosApi = {
   listar: () => peticion('/productos'),
@@ -57,7 +66,7 @@ export const proveedoresApi = {
 
 // Ventas
 export const ventasApi = {
-  listar: () => peticion('/ventas'),
+  listar: (rango) => peticion(`/ventas${consultaRango(rango)}`),
   obtener: (id) => peticion(`/ventas/${id}`),
   crear: (datos) => peticion('/ventas', { method: 'POST', body: JSON.stringify(datos) }),
   porPeriodo: (desde, hasta) => peticion(`/ventas?desde=${desde}&hasta=${hasta}`),
@@ -66,7 +75,7 @@ export const ventasApi = {
 
 // Compras
 export const comprasApi = {
-  listar: () => peticion('/compras'),
+  listar: (rango) => peticion(`/compras${consultaRango(rango)}`),
   obtener: (id) => peticion(`/compras/${id}`),
   crear: (datos) => peticion('/compras', {
     method: 'POST',
@@ -81,7 +90,7 @@ export const comprasApi = {
 
 // Gastos
 export const gastosApi = {
-  listar: () => peticion('/gastos'),
+  listar: (rango) => peticion(`/gastos${consultaRango(rango)}`),
   crear: (datos) => peticion('/gastos', { method: 'POST', body: JSON.stringify(datos) }),
   actualizar: (id, datos) => peticion(`/gastos/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
   eliminar: (id) => peticion(`/gastos/${id}`, { method: 'DELETE' }),

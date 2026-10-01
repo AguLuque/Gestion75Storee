@@ -3,10 +3,11 @@
 // Incluye verificación de stock con FOR UPDATE para evitar race conditions
 
 import pool from "../config/db.js";
+import { condicionRangoFechas } from "../utils/fechas.js";
 
 const VentaModel = {
-  // Obtener todas las ventas con sus ítems
-  getAll: async (usuario_id) => {
+  // Ventas con sus ítems; desde/hasta (días de Argentina, opcionales) acotan el período
+  getAll: async (usuario_id, { desde = null, hasta = null } = {}) => {
     const { rows } = await pool.query(`
     SELECT v.id, v.fecha, v.tipo, v.total, v.ganancia, v.observaciones, v.metodo_pago, v.canal, v.comision,
       json_agg(json_build_object(
@@ -20,10 +21,10 @@ const VentaModel = {
     FROM ventas v
     JOIN venta_items vi ON vi.venta_id = v.id
     JOIN productos p ON p.id = vi.producto_id
-    WHERE v.activo = true AND v.usuario_id = $1
+    WHERE v.activo = true AND v.usuario_id = $1 AND ${condicionRangoFechas("v.fecha", 2, 3)}
     GROUP BY v.id
     ORDER BY v.fecha DESC
-  `, [usuario_id]);
+  `, [usuario_id, desde, hasta]);
     return rows;
   },
 

@@ -47,6 +47,30 @@ export function fechaLocalISO(fecha = new Date()) {
   return `${año}-${mes}-${dia}`;
 }
 
+// Días (YYYY-MM-DD, ambos inclusive) que abarca el período del filtro global,
+// para pedirle al backend solo esos datos. null en un extremo = sin límite.
+export function rangoDelPeriodo(periodo, mesSeleccionado, añoSeleccionado, hoy = new Date()) {
+  const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  switch (periodo) {
+    case 'dia':
+      return { desde: fechaLocalISO(fechaHoy), hasta: null };
+    case 'semana': {
+      const inicio = new Date(fechaHoy);
+      inicio.setDate(inicio.getDate() - 7);
+      return { desde: fechaLocalISO(inicio), hasta: null };
+    }
+    case 'mes':
+      return {
+        desde: fechaLocalISO(new Date(añoSeleccionado, mesSeleccionado, 1)),
+        hasta: fechaLocalISO(new Date(añoSeleccionado, mesSeleccionado + 1, 0)),
+      };
+    case 'año':
+      return { desde: `${fechaHoy.getFullYear()}-01-01`, hasta: null };
+    default:
+      return { desde: null, hasta: null };
+  }
+}
+
 // Unir clases condicionalmente (equivalente simple a clsx)
 export function cn(...clases) {
   return clases.filter(Boolean).join(' ');
