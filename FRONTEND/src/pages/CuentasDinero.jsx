@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Pencil, Trash2, SlidersHorizontal } from 'lucide-react';
 import { useAccion } from '../hooks/useDatos.js';
 import { cuentasDineroApi } from '../services/api.js';
@@ -27,8 +27,7 @@ export default function CuentasDinero() {
   const { ejecutar, cargando: guardando } = useAccion();
   const { mostrarToast } = useToast();
 
-  const [saldos, setSaldos] = useState({});
-  const [cargandoSaldos, setCargandoSaldos] = useState(false);
+  const [cargandoSaldos, setCargandoSaldos] = useState(true);
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [cuentaEditando, setCuentaEditando] = useState(null);
@@ -38,21 +37,16 @@ export default function CuentasDinero() {
   const [cuentaAjustando, setCuentaAjustando] = useState(null);
   const [ajuste, setAjuste] = useState(ajusteVacio);
 
-  const cargarSaldos = useCallback(async () => {
-    if (!cuentas?.length) { setSaldos({}); return; }
-    setCargandoSaldos(true);
-    const resultados = await Promise.allSettled(
-      cuentas.map(c => cuentasDineroApi.obtenerSaldo(c.id))
-    );
-    const mapa = {};
-    resultados.forEach((r, i) => {
-      mapa[cuentas[i].id] = r.status === 'fulfilled' ? Number(r.value?.saldo ?? 0) : null;
-    });
-    setSaldos(mapa);
-    setCargandoSaldos(false);
-  }, [cuentas]);
+  // El listado de cuentas ya trae el saldo de cada una: un solo pedido, en vez
+  // de uno por cuenta. Se vuelve a pedir al entrar para que el saldo esté al día.
+  useEffect(() => {
+    recargar('cuentasDinero').then(() => setCargandoSaldos(false));
+  }, [recargar]);
 
-  useEffect(() => { cargarSaldos(); }, [cargarSaldos]);
+  const saldos = useMemo(
+    () => Object.fromEntries((cuentas || []).map(c => [c.id, c.saldo === undefined ? undefined : Number(c.saldo)])),
+    [cuentas]
+  );
 
   function abrirCrear() {
     setCuentaEditando(null);
@@ -109,19 +103,16 @@ export default function CuentasDinero() {
       mostrarToast('Ajuste registrado');
       setCuentaAjustando(null);
       setAjuste(ajusteVacio);
-      cargarSaldos();
+      recargar('cuentasDinero');
     } else {
       mostrarToast(resultado.error, 'error');
     }
   }
 
   const totalDisponible = Object.values(saldos).reduce((s, v) => s + (Number(v) || 0), 0);
-  const algunSaldoFallo = Object.values(saldos).some(v => v === null);
 
-  // undefined = todavía cargando; null = falló la consulta de ese saldo
   function mostrarSaldo(id) {
-    if (saldos[id] === undefined) return '...';
-    if (saldos[id] === null) return 'Error al cargar';
+    if (cargandoSaldos || saldos[id] === undefined) return '...';
     return formatearPrecio(saldos[id]);
   }
 
@@ -134,7 +125,6 @@ export default function CuentasDinero() {
           <h1 className="text-xl font-bold text-slate-800">Cuentas de dinero</h1>
           <p className="text-sm text-slate-500">
             Disponible total: {cargandoSaldos ? '...' : formatearPrecio(totalDisponible)}
-            {!cargandoSaldos && algunSaldoFallo && <span className="text-red-500"> (sin contar cuentas con error)</span>}
           </p>
         </div>
         <Boton onClick={abrirCrear}>

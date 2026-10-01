@@ -4,9 +4,23 @@
 import pool from "../config/db.js";
 
 const CuentaDineroModel = {
+  // Todas las cuentas activas con su saldo, calculado en la misma consulta
+  // (mismo cálculo que getSaldo) para no pedir el saldo de a una cuenta.
   getAll: async (usuario_id) => {
     const { rows } = await pool.query(
-      `SELECT * FROM cuentas_dinero WHERE activo = true AND usuario_id = $1 ORDER BY nombre ASC`,
+      `SELECT c.*,
+         c.saldo_inicial + COALESCE(m.ingresos, 0) - COALESCE(m.egresos, 0) AS saldo
+       FROM cuentas_dinero c
+       LEFT JOIN (
+         SELECT cuenta_dinero_id,
+           SUM(CASE WHEN tipo = 'ingreso' THEN monto ELSE 0 END) AS ingresos,
+           SUM(CASE WHEN tipo = 'egreso' THEN monto ELSE 0 END) AS egresos
+         FROM movimientos_financieros
+         WHERE usuario_id = $1
+         GROUP BY cuenta_dinero_id
+       ) m ON m.cuenta_dinero_id = c.id
+       WHERE c.activo = true AND c.usuario_id = $1
+       ORDER BY c.nombre ASC`,
       [usuario_id]
     );
     return rows;
