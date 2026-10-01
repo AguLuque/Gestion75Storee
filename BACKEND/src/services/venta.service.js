@@ -291,7 +291,7 @@ const eliminarVenta = async (id, usuario_id) => {
       throw { status: 404, message: "Venta no encontrada o ya fue eliminada." };
     }
 
-    await ProductoModel.updateStockDesdeItems(client, "venta_items", id, 1);
+    await ProductoModel.reponerStockDeVenta(client, id);
 
     await MovimientoFinancieroModel.revertirOrigenEnTransaccion(client, {
       origen_tipo: "venta",

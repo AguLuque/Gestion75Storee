@@ -81,7 +81,7 @@ export default function FormularioProducto({ productoInicial, categorias, onGuar
 
       <div className="grid grid-cols-2 gap-3">
         <InputPrecio
-          label="Precio de compra"
+          label="Costo (con envío)"
           valorInicial={formulario.precio_compra}
           onCambio={(valor) => actualizar('precio_compra', valor)}
         />

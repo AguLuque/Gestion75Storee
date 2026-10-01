@@ -11,14 +11,17 @@ const CompraModel = {
   getAll: async (usuario_id, { desde = null, hasta = null } = {}) => {
     const { rows } = await pool.query(`
     SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio, c.estado_pago,
+      c.proveedor_id, c.reparto_envio,
       p.nombre AS proveedor,
       json_agg(json_build_object(
         'producto_id', ci.producto_id,
         'producto', prod.nombre,
         'cantidad', ci.cantidad,
         'precio_unitario', ci.precio_unitario,
-        'subtotal', ci.subtotal
-      )) AS items
+        'subtotal', ci.subtotal,
+        'envio_asignado', ci.envio_asignado,
+        'peso', ci.peso
+      ) ORDER BY ci.id) AS items
     FROM compras c
     LEFT JOIN proveedores p ON p.id = c.proveedor_id
     JOIN compra_items ci ON ci.compra_id = c.id
@@ -33,14 +36,17 @@ const CompraModel = {
   getById: async (id, usuario_id) => {
     const { rows } = await pool.query(`
     SELECT c.id, c.fecha, c.total, c.observaciones, c.tipo, c.costo_envio, c.estado_pago,
+      c.proveedor_id, c.reparto_envio,
       p.nombre AS proveedor,
       json_agg(json_build_object(
         'producto_id', ci.producto_id,
         'producto', prod.nombre,
         'cantidad', ci.cantidad,
         'precio_unitario', ci.precio_unitario,
-        'subtotal', ci.subtotal
-      )) AS items
+        'subtotal', ci.subtotal,
+        'envio_asignado', ci.envio_asignado,
+        'peso', ci.peso
+      ) ORDER BY ci.id) AS items
     FROM compras c
     LEFT JOIN proveedores p ON p.id = c.proveedor_id
     JOIN compra_items ci ON ci.compra_id = c.id
@@ -51,31 +57,33 @@ const CompraModel = {
     return rows[0] || null;
   },
 
-  insertCabecera: async (client, { proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id }) => {
+  insertCabecera: async (client, { proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, reparto_envio, usuario_id }) => {
     const { rows } = await client.query(
-      `INSERT INTO compras (proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, estado_pago || "pagado", usuario_id]
+      `INSERT INTO compras (proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, reparto_envio, usuario_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, estado_pago || "pagado", reparto_envio, usuario_id]
     );
     return rows[0];
   },
 
-  updateCabecera: async (client, id, { proveedor_id, total, observaciones, tipo, costo_envio }, usuario_id) => {
+  updateCabecera: async (client, id, { proveedor_id, total, observaciones, tipo, costo_envio, reparto_envio }, usuario_id) => {
     const { rows } = await client.query(
-      `UPDATE compras SET proveedor_id=$1, total=$2, observaciones=$3, tipo=$4, costo_envio=$5
-     WHERE id=$6 AND usuario_id=$7 RETURNING *`,
-      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, id, usuario_id]
+      `UPDATE compras SET proveedor_id=$1, total=$2, observaciones=$3, tipo=$4, costo_envio=$5, reparto_envio=$6
+     WHERE id=$7 AND usuario_id=$8 RETURNING *`,
+      [proveedor_id ?? null, total, observaciones ?? null, tipo || "local", costo_envio ?? 0, reparto_envio, id, usuario_id]
     );
     return rows[0];
   },
 
-  // Inserta todos los ítems de una compra en una sola consulta
+  // Inserta todos los ítems de una compra en una sola consulta, con la parte
+  // del envío que le tocó a cada uno (envio_asignado) y sus kilos si se
+  // repartió por peso.
   insertItems: async (client, compra_id, items) => {
     const { rows } = await client.query(
-      `INSERT INTO compra_items (compra_id, producto_id, cantidad, precio_unitario, subtotal)
-       SELECT $1, i.producto_id, i.cantidad, i.precio_unitario, i.subtotal
-       FROM unnest($2::bigint[], $3::numeric[], $4::numeric[], $5::numeric[])
-         WITH ORDINALITY AS i(producto_id, cantidad, precio_unitario, subtotal, orden)
+      `INSERT INTO compra_items (compra_id, producto_id, cantidad, precio_unitario, subtotal, envio_asignado, peso)
+       SELECT $1, i.producto_id, i.cantidad, i.precio_unitario, i.subtotal, i.envio_asignado, i.peso
+       FROM unnest($2::bigint[], $3::numeric[], $4::numeric[], $5::numeric[], $6::numeric[], $7::numeric[])
+         WITH ORDINALITY AS i(producto_id, cantidad, precio_unitario, subtotal, envio_asignado, peso, orden)
        ORDER BY i.orden
        RETURNING *`,
       [
@@ -84,6 +92,8 @@ const CompraModel = {
         items.map((i) => i.cantidad),
         items.map((i) => i.precio_unitario),
         items.map((i) => i.cantidad * i.precio_unitario),
+        items.map((i) => i.envio_asignado ?? 0),
+        items.map((i) => i.peso ?? null),
       ]
     );
     return rows;

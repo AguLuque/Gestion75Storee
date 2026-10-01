@@ -164,7 +164,11 @@ function TabEstadoResultados({ datos }) {
       <Fila etiqueta="Fiados cargados a mano (Por cobrar)" valor={datos.ventas_fiadas} />
       <Fila etiqueta="Ingresos por ventas" valor={datos.ingresos_totales} total />
       <Fila etiqueta="Costo de mercadería vendida" valor={datos.costo_mercaderia_vendida} negativo />
-      <Fila etiqueta="Fletes de compras" valor={datos.fletes_compras} negativo />
+      {/* Solo compras anteriores al reparto del envío; en las nuevas el envío
+          ya está dentro del costo de mercadería vendida */}
+      {Number(datos.fletes_compras) > 0 && (
+        <Fila etiqueta="Fletes de compras anteriores" valor={datos.fletes_compras} negativo />
+      )}
       <Fila etiqueta="Comisiones" valor={datos.comisiones} negativo />
       <Fila etiqueta="Utilidad bruta" valor={datos.utilidad_bruta} total />
       <Fila etiqueta="Gastos operativos" valor={datos.gastos_operativos} negativo />

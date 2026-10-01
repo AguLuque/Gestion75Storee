@@ -9,8 +9,13 @@ import { CATEGORIAS_COSTO } from "../constants/finanzas.js";
 
 const TIPOS_COMPRA_VALIDOS = ["local", "nacional", "internacional"];
 const ESTADOS_PAGO_VALIDOS = ["pagado", "pendiente"];
+// Cómo se reparte el costo de envío entre los productos de la compra
+export const REPARTOS_ENVIO = ["valor", "unidad", "peso"];
 
-const validarCabecera = ({ tipo, costo_envio, estado_pago }) => {
+const validarCabecera = ({ tipo, costo_envio, estado_pago, reparto_envio }) => {
+  if (reparto_envio && !REPARTOS_ENVIO.includes(reparto_envio)) {
+    throw { status: 400, message: `reparto_envio debe ser uno de: ${REPARTOS_ENVIO.join(", ")}.` };
+  }
   if (tipo && !TIPOS_COMPRA_VALIDOS.includes(tipo)) {
     throw { status: 400, message: `tipo debe ser uno de: ${TIPOS_COMPRA_VALIDOS.join(", ")}.` };
   }
@@ -37,7 +42,57 @@ const validarItems = (items) => {
     if (item.precio_unitario < 0) {
       throw { status: 400, message: "El precio unitario no puede ser negativo." };
     }
+    if (item.peso !== undefined && item.peso !== null && item.peso !== "" && !(Number(item.peso) >= 0)) {
+      throw { status: 400, message: "El peso no puede ser negativo." };
+    }
   }
+};
+
+// Reparte el costo de envío entre los renglones de la compra y devuelve la
+// parte de cada uno (en $, para todas sus unidades):
+//   valor:  en proporción a lo que cuesta el renglón (cantidad × precio)
+//   unidad: lo mismo por cada unidad, sin importar el precio
+//   peso:   en proporción a los kilos del renglón
+// Se trabaja en centavos y el último renglón absorbe el redondeo, así la suma
+// da exactamente el envío.
+export const repartirEnvio = (items, costoEnvio, reparto) => {
+  const envioCentavos = Math.round((Number(costoEnvio) || 0) * 100);
+  if (envioCentavos <= 0) return items.map(() => 0);
+
+  const bases = items.map((i) => {
+    if (reparto === "unidad") return Number(i.cantidad);
+    if (reparto === "peso") return Number(i.peso) || 0;
+    return Number(i.cantidad) * Number(i.precio_unitario);
+  });
+  const totalBase = bases.reduce((a, b) => a + b, 0);
+  if (totalBase <= 0) {
+    throw {
+      status: 400,
+      message: reparto === "peso"
+        ? "Para repartir el envío por peso, cargá los kilos de los productos."
+        : "No se puede repartir el envío entre estos productos.",
+    };
+  }
+
+  const ultimo = bases.findLastIndex((b) => b > 0);
+  let asignado = 0;
+  return bases.map((base, idx) => {
+    if (idx === ultimo) return (envioCentavos - asignado) / 100;
+    const centavos = Math.round((envioCentavos * base) / totalBase);
+    asignado += centavos;
+    return centavos / 100;
+  });
+};
+
+// Ítems listos para guardar: con la parte del envío de cada renglón, y los
+// kilos solo si se repartió por peso.
+const prepararItems = (items, costo_envio, reparto) => {
+  const envios = repartirEnvio(items, costo_envio, reparto);
+  return items.map((item, idx) => ({
+    ...item,
+    envio_asignado: envios[idx],
+    peso: reparto === "peso" ? Number(item.peso) || 0 : null,
+  }));
 };
 
 // Verifica que los productos/variantes de los ítems pertenezcan al usuario
@@ -63,15 +118,21 @@ const verificarPropiedad = async (client, items, usuario_id) => {
   }
 };
 
-// Suma (signo 1) o resta (signo -1) al stock las cantidades de los ítems
-const sumarStock = async (client, items, signo) => {
+// Entrada de la mercadería: suma el stock y, en los productos, recalcula el
+// costo promedio con lo pagado más la parte del envío. Las variantes solo
+// suman stock: el costo es del producto base.
+const entrarMercaderia = async (client, items) => {
   await VarianteModel.updateStockVarias(
     client,
-    items.filter((i) => i.variante_id).map((i) => ({ id: i.variante_id, cantidad: signo * i.cantidad }))
+    items.filter((i) => i.variante_id).map((i) => ({ id: i.variante_id, cantidad: i.cantidad }))
   );
-  await ProductoModel.updateStockVarios(
+  await ProductoModel.sumarCompra(
     client,
-    items.filter((i) => !i.variante_id).map((i) => ({ id: i.producto_id, cantidad: signo * i.cantidad }))
+    items.filter((i) => !i.variante_id).map((i) => ({
+      id: i.producto_id,
+      cantidad: i.cantidad,
+      valor: i.cantidad * i.precio_unitario + i.envio_asignado,
+    }))
   );
 };
 
@@ -87,9 +148,11 @@ const cuentaDelPagoVigente = (movimientos) => {
   return ultimoEgreso?.cuenta_dinero_id ?? null;
 };
 
-const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, estado_pago, items, usuario_id }) => {
-  validarCabecera({ tipo, costo_envio, estado_pago });
-  validarItems(items);
+const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, reparto_envio = "valor", cuenta_dinero_id, estado_pago, items: itemsRecibidos, usuario_id }) => {
+  reparto_envio = reparto_envio || "valor";
+  validarCabecera({ tipo, costo_envio, estado_pago, reparto_envio });
+  validarItems(itemsRecibidos);
+  const items = prepararItems(itemsRecibidos, costo_envio, reparto_envio);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
   const client = await CompraModel.getClient();
@@ -100,10 +163,10 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
     await verificarPropiedad(client, items, usuario_id);
 
     const compra = await CompraModel.insertCabecera(client, {
-      proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, usuario_id,
+      proveedor_id, total, observaciones, tipo, costo_envio, estado_pago, reparto_envio, usuario_id,
     });
     const itemsCreados = await CompraModel.insertItems(client, compra.id, items);
-    await sumarStock(client, items, 1);
+    await entrarMercaderia(client, items);
 
     if (compra.estado_pago === "pendiente") {
       await CuentaPorPagarModel.createEnTransaccion(client, {
@@ -158,9 +221,11 @@ const crearCompra = async ({ proveedor_id, observaciones, tipo, costo_envio, cue
   }
 };
 
-const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio, cuenta_dinero_id, items, usuario_id }) => {
-  validarCabecera({ tipo, costo_envio });
-  validarItems(items);
+const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio, reparto_envio = "valor", cuenta_dinero_id, items: itemsRecibidos, usuario_id }) => {
+  reparto_envio = reparto_envio || "valor";
+  validarCabecera({ tipo, costo_envio, reparto_envio });
+  validarItems(itemsRecibidos);
+  const items = prepararItems(itemsRecibidos, costo_envio, reparto_envio);
 
   const total = items.reduce((acc, item) => acc + item.cantidad * item.precio_unitario, 0);
   const client = await CompraModel.getClient();
@@ -170,12 +235,15 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
 
     // Bloquea la compra para serializar ediciones concurrentes de la misma compra
     const { rows: compraLock } = await client.query(
-      `SELECT id FROM compras WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
+      `SELECT id, reparto_envio FROM compras WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
       [id, usuario_id]
     );
     if (!compraLock[0]) {
       throw { status: 404, message: "Compra no encontrada." };
     }
+    // Compras anteriores al reparto del envío (reparto_envio NULL) nunca
+    // tocaron el costo de los productos: al editarlas solo se revierte el stock.
+    const costoAplicado = compraLock[0].reparto_envio !== null;
 
     // Compra a crédito: la deuda vive en su cuenta por pagar, que se ajusta al
     // nuevo total (conservando lo ya pagado). No se registra ningún pago acá:
@@ -208,15 +276,16 @@ const editarCompra = async (id, { proveedor_id, observaciones, tipo, costo_envio
 
     await verificarPropiedad(client, items, usuario_id);
 
-    // Saca el stock que había sumado la versión anterior de la compra.
+    // Deshace la versión anterior de la compra (stock y costo promedio) y
+    // aplica la nueva, como si se hubiera cargado así desde el principio.
     // compra_items no guarda variante_id (limitación actual del esquema), así
-    // que siempre se ajusta el producto base, igual que antes.
-    await ProductoModel.updateStockDesdeItems(client, "compra_items", id, -1);
+    // que lo anterior siempre se revierte sobre el producto base, igual que antes.
+    await ProductoModel.revertirCompra(client, id, costoAplicado);
 
     await CompraModel.deleteItems(client, id);
-    await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones, tipo, costo_envio }, usuario_id);
+    await CompraModel.updateCabecera(client, id, { proveedor_id, total, observaciones, tipo, costo_envio, reparto_envio }, usuario_id);
     await CompraModel.insertItems(client, id, items);
-    await sumarStock(client, items, 1);
+    await entrarMercaderia(client, items);
 
     const movimientosOriginales = await MovimientoFinancieroModel.revertirOrigenEnTransaccion(client, {
       origen_tipo: "compra",
@@ -292,7 +361,7 @@ const eliminarCompra = async (id, usuario_id) => {
     await client.query("BEGIN");
 
     const { rows: compraRows } = await client.query(
-      `SELECT id FROM compras WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
+      `SELECT id, reparto_envio FROM compras WHERE id = $1 AND usuario_id = $2 AND activo = true FOR UPDATE`,
       [id, usuario_id]
     );
 
@@ -300,7 +369,9 @@ const eliminarCompra = async (id, usuario_id) => {
       throw { status: 404, message: "Compra no encontrada o ya fue eliminada." };
     }
 
-    await ProductoModel.updateStockDesdeItems(client, "compra_items", id, -1);
+    // Saca el stock de la compra y su valor del costo promedio (las compras
+    // anteriores al reparto del envío nunca tocaron el costo: solo stock).
+    await ProductoModel.revertirCompra(client, id, compraRows[0].reparto_envio !== null);
 
     await MovimientoFinancieroModel.revertirOrigenEnTransaccion(client, {
       origen_tipo: "compra",

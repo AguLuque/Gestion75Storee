@@ -107,7 +107,7 @@ export default function Productos() {
 
       <Card className="p-5">
         <Tabla
-          columnas={['Producto', 'Categoría', 'Stock', 'P. Compra', 'P. Minorista', 'P. Mayorista', 'Acciones']} datos={productosFiltrados}
+          columnas={['Producto', 'Categoría', 'Stock', 'Costo', 'P. Minorista', 'P. Mayorista', 'Acciones']} datos={productosFiltrados}
           vacio="No se encontraron productos"
           onSeleccionar={setDetalleMobile}
           renderCardMobile={(p) => (
@@ -190,7 +190,7 @@ export default function Productos() {
           <div>
             <DetalleCampo etiqueta="Categoría" valor={detalleMobile.categoria_nombre || '—'} />
             <DetalleCampo etiqueta="Stock" valor={`${detalleMobile.stock_actual} u.`} />
-            <DetalleCampo etiqueta="Precio de compra" valor={formatearPrecio(detalleMobile.precio_compra)} />
+            <DetalleCampo etiqueta="Costo (con envío)" valor={formatearPrecio(detalleMobile.precio_compra)} />
             <DetalleCampo etiqueta="Precio minorista" valor={formatearPrecio(detalleMobile.precio_minorista)} />
             <DetalleCampo etiqueta="Precio mayorista" valor={formatearPrecio(detalleMobile.precio_mayorista)} />
           </div>

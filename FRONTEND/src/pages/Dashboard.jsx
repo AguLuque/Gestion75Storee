@@ -22,15 +22,18 @@ export default function Dashboard() {
   const listaGastos = Array.isArray(gastos) ? gastos : [];
   const listaPorCobrar = Array.isArray(cuentasPorCobrar) ? cuentasPorCobrar : [];
   // Mismo criterio que el Estado de Resultados de Reportes: el fiado cargado a
-  // mano (deuda sin venta) cuenta como venta el día que se cargó, y el flete
-  // de las compras del período se resta de la ganancia.
+  // mano (deuda sin venta) cuenta como venta el día que se cargó, y el envío
+  // de las compras viejas (sin reparto) se resta de la ganancia. En las
+  // compras nuevas el envío ya está dentro del costo de cada producto.
   const stats = useMemo(() => {
     const enRango = (dia) =>
       (!rango?.desde || dia >= rango.desde) && (!rango?.hasta || dia <= rango.hasta);
     const fiados = listaPorCobrar
       .filter(c => !c.venta_id && enRango(diaISO(c.fecha_emision)))
       .reduce((s, c) => s + Number(c.monto_total || 0), 0);
-    const fletes = listaCompras.reduce((s, c) => s + Number(c.costo_envio || 0), 0);
+    const fletes = listaCompras
+      .filter(c => !c.reparto_envio)
+      .reduce((s, c) => s + Number(c.costo_envio || 0), 0);
 
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0) + fiados;
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0) + Number(c.costo_envio || 0), 0);

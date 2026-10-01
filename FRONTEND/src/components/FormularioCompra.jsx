@@ -7,7 +7,14 @@ import { productosApi, categoriasApi } from '../services/api.js';
 import { useAccion } from '../hooks/useDatos.js';
 import { useToast } from '../context/ToastContext.jsx';
 
-const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '' });
+const itemVacio = () => ({ producto_id: '', cantidad: 1, precio_unitario: '', peso: '' });
+
+// Cómo se reparte el costo de envío entre los productos (se suma al costo de cada uno)
+const REPARTOS_ENVIO = [
+  { valor: 'valor', etiqueta: 'Según el precio de cada producto (recomendado)' },
+  { valor: 'unidad', etiqueta: 'Lo mismo por cada unidad' },
+  { valor: 'peso', etiqueta: 'Según el peso (kg) de cada producto' },
+];
 
 // Precio de compra actual al lado de cada producto del buscador
 function detallePrecioCompra(producto) {
@@ -32,12 +39,14 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
         producto_id: String(i.producto_id),
         cantidad: i.cantidad,
         precio_unitario: i.precio_unitario,
+        peso: i.peso ?? '',
       }))
       : [itemVacio()]
   );
   const [observaciones, setObservaciones] = useState(compraInicial?.observaciones || '');
   const [tipo, setTipo] = useState(compraInicial?.tipo || 'local');
   const [costoEnvio, setCostoEnvio] = useState(compraInicial?.costo_envio || '');
+  const [repartoEnvio, setRepartoEnvio] = useState(compraInicial?.reparto_envio || 'valor');
   const [cuentaDineroId, setCuentaDineroId] = useState('');
   const [aCredito, setACredito] = useState(false);
   const [modalNuevoProducto, setModalNuevoProducto] = useState(false);
@@ -59,7 +68,9 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
       copia[idx] = { ...copia[idx], [campo]: valor };
       if (campo === 'producto_id' && valor) {
         const prod = productos.find(p => String(p.id) === valor);
-        if (prod) copia[idx].precio_unitario = prod.precio_compra || '';
+        // Lo que se pagó en la última compra; precio_compra ya trae el envío
+        // repartido (es el costo promedio), no sirve como precio del proveedor.
+        if (prod) copia[idx].precio_unitario = prod.ultimo_precio_compra || prod.precio_compra || '';
       }
       return copia;
     });
@@ -100,6 +111,9 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
 
   const total = items.reduce((s, i) => s + (Number(i.cantidad) || 0) * (Number(i.precio_unitario) || 0), 0);
 
+  const hayEnvio = Number(costoEnvio) > 0;
+  const repartoPorPeso = hayEnvio && repartoEnvio === 'peso';
+
   function enviar(e) {
     e.preventDefault();
     const itemsValidos = items.filter(i => i.producto_id && i.cantidad > 0);
@@ -109,12 +123,14 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
       observaciones: observaciones || null,
       tipo,
       costo_envio: Number(costoEnvio) || 0,
+      reparto_envio: repartoEnvio,
       estado_pago: aCredito ? 'pendiente' : 'pagado',
       cuenta_dinero_id: !aCredito && cuentaDineroId ? Number(cuentaDineroId) : null,
       items: itemsValidos.map(i => ({
         producto_id: Number(i.producto_id),
         cantidad: Number(i.cantidad),
         precio_unitario: Number(i.precio_unitario) || 0,
+        peso: repartoPorPeso ? Number(i.peso) || 0 : null,
       })),
     });
   }
@@ -142,6 +158,17 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
         <p className="text-xs text-slate-400 -mt-2">
           Incluye flete, correo, o nafta si tenés que ir a buscarlo (por ej. a otra ciudad por cargo).
         </p>
+
+        {hayEnvio && (
+          <div>
+            <Select label="Repartir el envío entre los productos" value={repartoEnvio} onChange={e => setRepartoEnvio(e.target.value)}>
+              {REPARTOS_ENVIO.map(r => <option key={r.valor} value={r.valor}>{r.etiqueta}</option>)}
+            </Select>
+            <p className="text-xs text-slate-400 mt-1">
+              El envío se suma al costo de cada producto para calcular bien la ganancia.
+            </p>
+          </div>
+        )}
 
         {!compraInicial && (
           <div className="flex items-center gap-2">
@@ -209,6 +236,12 @@ export default function FormularioCompra({ compraInicial, productos, proveedores
                   }
                 />
               </div>
+              {repartoPorPeso && (
+                <input type="number" min="0" step="0.001" value={item.peso}
+                  onChange={e => actualizarItem(idx, 'peso', e.target.value)}
+                  placeholder="Kg" aria-label="Peso en kg"
+                  className="w-20 text-base md:text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" required />
+              )}
               {items.length > 1 && (
                 <Boton variante="peligro" tamaño="sm" type="button" onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}>
                   <Trash2 size={14} />

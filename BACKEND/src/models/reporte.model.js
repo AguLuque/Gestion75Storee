@@ -33,12 +33,15 @@ const ReporteModel = {
       [usuario_id, desde, hasta]
     );
 
-    // Costo de envío de las compras del período: es parte de lo que cuesta
-    // traer la mercadería, así que se resta antes de la utilidad bruta.
+    // Envío de compras anteriores al reparto (reparto_envio NULL): ese envío no
+    // quedó dentro del costo de los productos, así que se resta acá, en el
+    // período de la compra. Las compras nuevas reparten el envío en el costo
+    // de cada producto y llega a la ganancia vía "Costo de mercadería vendida".
     const { rows: fletesRows } = await pool.query(
       `SELECT COALESCE(SUM(costo_envio), 0) AS fletes_compras
        FROM compras
-       WHERE activo = true AND usuario_id = $1 AND (fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
+       WHERE activo = true AND reparto_envio IS NULL AND usuario_id = $1
+         AND (fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
       [usuario_id, desde, hasta]
     );
 
