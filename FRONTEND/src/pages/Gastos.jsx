@@ -12,7 +12,9 @@ import { formatearPrecio, formatearFecha, metodosPagoPermitidos, metodoPagoParaC
 
 // valor = lo que se guarda (el backend lo mapea a su categoría); etiqueta = lo que se ve.
 // "Personal" son sueldos de empleados; lo que se lleva el dueño va en el retiro.
+// El retiro va primero: es lo que más se carga.
 const CATEGORIAS_GASTO = [
+  { valor: CATEGORIA_RETIRO_DUENO, etiqueta: 'Retiro del dueño (personal, no es gasto del negocio)' },
   { valor: 'Servicios', etiqueta: 'Servicios' },
   { valor: 'Alquiler', etiqueta: 'Alquiler' },
   { valor: 'Transporte', etiqueta: 'Transporte' },
@@ -20,7 +22,6 @@ const CATEGORIAS_GASTO = [
   { valor: 'Personal', etiqueta: 'Sueldos / empleados' },
   { valor: 'Impuestos', etiqueta: 'Impuestos' },
   { valor: 'Otros', etiqueta: 'Otros' },
-  { valor: CATEGORIA_RETIRO_DUENO, etiqueta: 'Retiro del dueño (personal, no es gasto del negocio)' },
 ];
 const METODOS_PAGO = [
   { valor: 'efectivo', etiqueta: 'Efectivo' },
@@ -192,8 +193,10 @@ export default function Gastos() {
             value={formulario.categoria}
             onChange={e => actualizar('categoria', e.target.value)}
           >
+            {/* El retiro va arriba del todo, antes de "Sin categoría" */}
+            <option value={CATEGORIAS_GASTO[0].valor}>{CATEGORIAS_GASTO[0].etiqueta}</option>
             <option value="">Sin categoría</option>
-            {CATEGORIAS_GASTO.map(c => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
+            {CATEGORIAS_GASTO.slice(1).map(c => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
           </Select>
           <Select
             label="Método de pago"
