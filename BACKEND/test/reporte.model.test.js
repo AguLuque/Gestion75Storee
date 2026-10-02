@@ -7,6 +7,7 @@ import pool from "../src/config/db.js";
 import ProductoModel from "../src/models/producto.model.js";
 import VentaService from "../src/services/venta.service.js";
 import ReporteModel from "../src/models/reporte.model.js";
+import { fechaArgentina } from "../src/utils/fechas.js";
 
 const MARCA = "__TEST_REPORTES__";
 let REAL_UID;
@@ -38,7 +39,8 @@ after(async () => {
   await pool.end();
 });
 
-const HOY = new Date().toISOString().slice(0, 10);
+// Hoy en Argentina, igual que los reportes (en UTC, después de las 21 ya es mañana)
+const HOY = fechaArgentina();
 
 test("getEstadoResultados calcula ingresos, costo de mercaderia, comisiones y gastos del periodo", async () => {
   const p = await ProductoModel.create({
@@ -210,4 +212,19 @@ test("getResumen combina estado de resultados, balance y flujo de caja", async (
   ]) {
     assert.ok(clave in resumen, `falta la clave ${clave}`);
   }
+});
+
+test("getEstadoResultados no resta los retiros del dueño de la ganancia: los muestra aparte", async () => {
+  const antes = await ReporteModel.getEstadoResultados(HOY, HOY, REAL_UID);
+  const { rows } = await pool.query(
+    `INSERT INTO gastos (descripcion, monto, categoria, usuario_id, fecha) VALUES ($1, 500, 'Retiro del dueño (personal)', $2, now()) RETURNING id`,
+    [`${MARCA} retiro`, REAL_UID]
+  );
+  gastosCreados.push(rows[0].id);
+
+  const despues = await ReporteModel.getEstadoResultados(HOY, HOY, REAL_UID);
+  assert.equal(despues.gastos_operativos, antes.gastos_operativos, "el retiro no es gasto operativo");
+  assert.equal(despues.utilidad_neta, antes.utilidad_neta, "la ganancia no cambia");
+  assert.equal(Number((despues.retiros_dueno - antes.retiros_dueno).toFixed(2)), 500);
+  assert.equal(Number(despues.queda_en_el_negocio.toFixed(2)), Number((despues.utilidad_neta - despues.retiros_dueno).toFixed(2)));
 });

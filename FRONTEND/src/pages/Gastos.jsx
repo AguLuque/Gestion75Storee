@@ -8,9 +8,20 @@ import {
   Boton, Card, Modal, Input, InputPrecio, Select,
   Spinner, Tabla, ModalConfirmar, Badge, Drawer, DetalleCampo
 } from '../components/ui/index.jsx';
-import { formatearPrecio, formatearFecha, metodosPagoPermitidos, metodoPagoParaCuenta } from '../utils.js';
+import { formatearPrecio, formatearFecha, metodosPagoPermitidos, metodoPagoParaCuenta, CATEGORIA_RETIRO_DUENO, esRetiroDueno } from '../utils.js';
 
-const CATEGORIAS_GASTO = ['Servicios', 'Alquiler', 'Transporte', 'Marketing', 'Personal', 'Impuestos', 'Otros'];
+// valor = lo que se guarda (el backend lo mapea a su categoría); etiqueta = lo que se ve.
+// "Personal" son sueldos de empleados; lo que se lleva el dueño va en el retiro.
+const CATEGORIAS_GASTO = [
+  { valor: 'Servicios', etiqueta: 'Servicios' },
+  { valor: 'Alquiler', etiqueta: 'Alquiler' },
+  { valor: 'Transporte', etiqueta: 'Transporte' },
+  { valor: 'Marketing', etiqueta: 'Marketing' },
+  { valor: 'Personal', etiqueta: 'Sueldos / empleados' },
+  { valor: 'Impuestos', etiqueta: 'Impuestos' },
+  { valor: 'Otros', etiqueta: 'Otros' },
+  { valor: CATEGORIA_RETIRO_DUENO, etiqueta: 'Retiro del dueño (personal, no es gasto del negocio)' },
+];
 const METODOS_PAGO = [
   { valor: 'efectivo', etiqueta: 'Efectivo' },
   { valor: 'transferencia', etiqueta: 'Transferencia' },
@@ -95,7 +106,9 @@ export default function Gastos() {
     }
   }
 
-  const totalGastos = (gastos || []).reduce((s, g) => s + Number(g.monto), 0);
+  // Los retiros del dueño se muestran aparte: no son gasto del negocio
+  const totalGastos = (gastos || []).filter(g => !esRetiroDueno(g.categoria)).reduce((s, g) => s + Number(g.monto), 0);
+  const totalRetiros = (gastos || []).filter(g => esRetiroDueno(g.categoria)).reduce((s, g) => s + Number(g.monto), 0);
 
   if (cargando) return <Spinner />;
 
@@ -104,7 +117,10 @@ export default function Gastos() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Gastos</h1>
-          <p className="text-sm text-slate-500">Total: {formatearPrecio(totalGastos)}</p>
+          <p className="text-sm text-slate-500">
+            Gastos del negocio: {formatearPrecio(totalGastos)}
+            {totalRetiros > 0 && <> · Retiros del dueño: {formatearPrecio(totalRetiros)}</>}
+          </p>
         </div>
         <Boton onClick={abrirCrear}>
           <Plus size={16} /> Nuevo gasto
@@ -177,7 +193,7 @@ export default function Gastos() {
             onChange={e => actualizar('categoria', e.target.value)}
           >
             <option value="">Sin categoría</option>
-            {CATEGORIAS_GASTO.map(c => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIAS_GASTO.map(c => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
           </Select>
           <Select
             label="Método de pago"

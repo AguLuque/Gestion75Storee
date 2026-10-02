@@ -1,6 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import dotenv from "dotenv";
+import { fechaArgentina } from "../src/utils/fechas.js";
 dotenv.config();
 
 import pool from "../src/config/db.js";
@@ -31,7 +32,8 @@ function crearReqRes(query) {
   return { req, res, getStatus: () => statusCode, getJson: () => jsonBody };
 }
 
-const HOY = new Date().toISOString().slice(0, 10);
+// Hoy en Argentina, igual que los reportes (en UTC, después de las 21 ya es mañana)
+const HOY = fechaArgentina();
 
 test("GET resumen requiere desde y hasta", async () => {
   const { req, res, getStatus, getJson } = crearReqRes({});

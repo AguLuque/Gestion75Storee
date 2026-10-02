@@ -28,3 +28,10 @@ test("categoría desconocida o vacía cae a OTROS_GASTOS en vez de pasar texto l
   assert.equal(normalizarCategoriaGasto(undefined), CATEGORIAS_GASTO.OTROS_GASTOS);
   assert.equal(normalizarCategoriaGasto(""), CATEGORIAS_GASTO.OTROS_GASTOS);
 });
+
+test("el retiro del dueño tiene su propia categoría, no la de sueldos ni otros gastos", async () => {
+  const { CATEGORIA_RETIRO_DUENO, ETIQUETA_RETIRO_DUENO } = await import("../src/constants/finanzas.js");
+  assert.equal(normalizarCategoriaGasto(ETIQUETA_RETIRO_DUENO), CATEGORIA_RETIRO_DUENO);
+  assert.equal(normalizarCategoriaGasto("retiro del dueno"), CATEGORIA_RETIRO_DUENO);
+  assert.equal(normalizarCategoriaGasto("  RETIRO DEL DUEÑO  "), CATEGORIA_RETIRO_DUENO);
+});

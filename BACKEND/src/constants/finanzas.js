@@ -35,6 +35,18 @@ export const CATEGORIAS_GASTO = {
 
 export const CATEGORIA_AJUSTE_MANUAL = "ajuste_manual";
 
+// Plata que el dueño saca del negocio para uso personal. Se carga desde Gastos
+// pero NO es un gasto del negocio: no se resta de la ganancia (Estado de
+// Resultados), solo sale de la caja (Flujo de Caja y saldos de las cuentas).
+// ETIQUETA_RETIRO_DUENO es el texto que guarda gastos.categoria (el mismo que
+// ofrece el formulario de FRONTEND/src/pages/Gastos.jsx).
+export const CATEGORIA_RETIRO_DUENO = "retiro_dueno";
+export const ETIQUETA_RETIRO_DUENO = "Retiro del dueño (personal)";
+// Condición SQL "este gasto es un retiro del dueño" sobre gastos.categoria,
+// tolerante a mayúsculas, espacios y a la tilde de "dueño".
+export const SQL_ES_RETIRO_DUENO = (columna) =>
+  `translate(lower(trim(coalesce(${columna}, ''))), 'ñ', 'n') LIKE 'retiro del dueno%'`;
+
 export const ORIGEN_TIPOS = {
   VENTA: "venta",
   COMPRA: "compra",
@@ -94,5 +106,6 @@ const quitarAcentos = (texto) => texto.normalize("NFD").replace(/[̀-ͯ]/g, "");
 export const normalizarCategoriaGasto = (categoriaLibre) => {
   if (!categoriaLibre) return CATEGORIAS_GASTO.OTROS_GASTOS;
   const clave = quitarAcentos(String(categoriaLibre).trim().toLowerCase());
+  if (clave.startsWith("retiro del dueno")) return CATEGORIA_RETIRO_DUENO;
   return MAPA_NORMALIZACION_GASTO[clave] || CATEGORIAS_GASTO.OTROS_GASTOS;
 };

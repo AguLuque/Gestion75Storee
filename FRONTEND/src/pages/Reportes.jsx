@@ -38,6 +38,7 @@ const ETIQUETAS_CATEGORIA = {
   gastos_bancarios: 'Gastos bancarios',
   otros_gastos: 'Otros gastos',
   ajuste_manual: 'Ajuste manual',
+  retiro_dueno: 'Retiro del dueño',
 };
 
 function etiquetaCategoria(categoria) {
@@ -173,6 +174,13 @@ function TabEstadoResultados({ datos }) {
       <Fila etiqueta="Utilidad bruta" valor={datos.utilidad_bruta} total />
       <Fila etiqueta="Gastos operativos" valor={datos.gastos_operativos} negativo />
       <Fila etiqueta="Utilidad neta" valor={datos.utilidad_neta} total />
+      {/* Lo que se llevó el dueño no es gasto: se muestra después de la ganancia */}
+      {Number(datos.retiros_dueno) > 0 && (
+        <>
+          <Fila etiqueta="Retiros del dueño (no son gasto)" valor={datos.retiros_dueno} negativo />
+          <Fila etiqueta="Quedó en el negocio" valor={datos.queda_en_el_negocio} total />
+        </>
+      )}
     </Card>
   );
 }

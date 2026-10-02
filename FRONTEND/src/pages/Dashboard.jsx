@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { TrendingUp, ShoppingCart, AlertTriangle, Wallet, DollarSign, BarChart3 } from 'lucide-react';
 import { useDatosGlobal } from '../context/DatosContext.jsx';
 import { StatCard, Card, Spinner, Badge } from '../components/ui/index.jsx';
-import { formatearPrecio, formatearFecha, diaISO } from '../utils.js';
+import { formatearPrecio, formatearFecha, diaISO, esRetiroDueno } from '../utils.js';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -37,7 +37,10 @@ export default function Dashboard() {
 
     const totalVentas = listaVentas.reduce((s, v) => s + Number(v.total || 0), 0) + fiados;
     const totalCompras = listaCompras.reduce((s, c) => s + Number(c.total || 0) + Number(c.costo_envio || 0), 0);
-    const totalGastos = listaGastos.reduce((s, g) => s + Number(g.monto || 0), 0);
+    // Los retiros del dueño no son gasto del negocio: no restan de la ganancia
+    const totalGastos = listaGastos
+      .filter(g => !esRetiroDueno(g.categoria))
+      .reduce((s, g) => s + Number(g.monto || 0), 0);
     const gananciaBruta = listaVentas.reduce((s, v) => s + Number(v.ganancia || 0), 0) + fiados - fletes;
     const gananciaNeta = gananciaBruta - totalGastos;
     // Lo que me deben, a hoy: mismo cálculo que "Por cobrar" en Reportes/Balance

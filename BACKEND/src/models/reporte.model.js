@@ -8,6 +8,7 @@
 
 import pool from "../config/db.js";
 import { ZONA_HORARIA_NEGOCIO } from "../utils/fechas.js";
+import { SQL_ES_RETIRO_DUENO } from "../constants/finanzas.js";
 
 const ReporteModel = {
   getEstadoResultados: async (desde, hasta, usuario_id) => {
@@ -26,8 +27,12 @@ const ReporteModel = {
       [usuario_id, desde, hasta]
     );
 
+    // Los retiros del dueño se cargan como gastos pero no son gasto del
+    // negocio: se separan y no se restan de la ganancia.
     const { rows: gastosRows } = await pool.query(
-      `SELECT COALESCE(SUM(monto), 0) AS gastos_operativos
+      `SELECT
+         COALESCE(SUM(monto) FILTER (WHERE NOT ${SQL_ES_RETIRO_DUENO("categoria")}), 0) AS gastos_operativos,
+         COALESCE(SUM(monto) FILTER (WHERE ${SQL_ES_RETIRO_DUENO("categoria")}), 0) AS retiros_dueno
        FROM gastos
        WHERE usuario_id = $1 AND (fecha AT TIME ZONE '${ZONA_HORARIA_NEGOCIO}')::date BETWEEN $2 AND $3`,
       [usuario_id, desde, hasta]
@@ -61,6 +66,7 @@ const ReporteModel = {
     const costo_mercaderia_vendida = Number(costoRows[0].costo_mercaderia_vendida);
     const fletes_compras = Number(fletesRows[0].fletes_compras);
     const gastos_operativos = Number(gastosRows[0].gastos_operativos);
+    const retiros_dueno = Number(gastosRows[0].retiros_dueno);
 
     const ingresos_totales = ingresos_por_ventas + ventas_fiadas;
     const utilidad_bruta = ingresos_totales - costo_mercaderia_vendida - fletes_compras - comisiones;
@@ -76,6 +82,10 @@ const ReporteModel = {
       utilidad_bruta,
       gastos_operativos,
       utilidad_neta,
+      // Informativo, después de la utilidad neta: lo que se llevó el dueño y
+      // lo que quedó en el negocio
+      retiros_dueno,
+      queda_en_el_negocio: utilidad_neta - retiros_dueno,
     };
   },
 

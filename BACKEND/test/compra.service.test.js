@@ -12,6 +12,7 @@ import CuentaDineroModel from "../src/models/cuentaDinero.model.js";
 import CompraService, { repartirEnvio } from "../src/services/compra.service.js";
 import ReporteModel from "../src/models/reporte.model.js";
 import CompraModel from "../src/models/compra.model.js";
+import { fechaArgentina } from "../src/utils/fechas.js";
 
 const MARCA = "__TEST_AUDITORIA__";
 const OTRO_UID = "11111111-1111-1111-1111-111111111111";
@@ -666,7 +667,7 @@ test("una compra trae su proveedor_id para que editarla no lo pierda", async () 
 
 test("el envío de una compra nueva no se resta aparte en el Estado de Resultados", async () => {
   const p = await productoDePrueba();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaArgentina();
   const antes = await ReporteModel.getEstadoResultados(hoy, hoy, REAL_UID);
   const compra = await CompraService.crearCompra({
     costo_envio: 70, items: [{ producto_id: p.id, cantidad: 1, precio_unitario: 10 }], usuario_id: REAL_UID,

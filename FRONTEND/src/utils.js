@@ -47,6 +47,15 @@ export function fechaLocalISO(fecha = new Date()) {
   return `${año}-${mes}-${dia}`;
 }
 
+// Categoría de Gastos para la plata que el dueño saca para uso personal. No es
+// un gasto del negocio: no se resta de la ganancia, solo sale de la caja. El
+// backend la reconoce por este mismo texto (BACKEND/src/constants/finanzas.js).
+export const CATEGORIA_RETIRO_DUENO = 'Retiro del dueño (personal)';
+
+export function esRetiroDueno(categoria) {
+  return (categoria || '').trim().toLowerCase().replace('ñ', 'n').startsWith('retiro del dueno');
+}
+
 // Días (YYYY-MM-DD, ambos inclusive) que abarca el período del filtro global,
 // para pedirle al backend solo esos datos. null en un extremo = sin límite.
 export function rangoDelPeriodo(periodo, mesSeleccionado, añoSeleccionado, hoy = new Date()) {
